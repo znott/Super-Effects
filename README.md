@@ -10,7 +10,7 @@ Aim is to assess the generalizability of effect sizes across different sample si
 Backround: 
 
 Data taken from the Executive Function and Implicit Learning (EFIL) project run by Abbey Nydam and Paul Dux for the Team Honours Thesis in 2019.
-It included data from ~350 1st-year psychology participants on a battery of seven cognitive tasks: 
+It included data from 313 1st-year psychology participants on a battery of seven cognitive tasks: 
 
 Tasks were:
 1. Operation Span
