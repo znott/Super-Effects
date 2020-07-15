@@ -32,22 +32,22 @@ These were organised into 4 tasks that tap executive functions (OS, AB, GNG, SD)
 
 <b>Data Structures:</b>
 
-Original data is in .mat files (hosted by Abbey - 1 file per 7 tasks)
-Trial level data is in .xls or .csv format (analysed by MATLAB scripts from Abbey)
-Condition level data is in .xls or .csv format  (analysed by MATLAB scripts from Abbey)
+- Original data is in .mat files (hosted by Abbey - 1 file per 7 tasks)
+- Trial level data is in .xls or .csv format (analysed by MATLAB scripts from Abbey)
+- Condition level data is in .xls or .csv format  (analysed by MATLAB scripts from Abbey)
 
 <b>Analysis:</b>
 
 <b>*Existing scripts* </b>
 
-MATLAB scripts to analyse task effects using fixed-effects models (i.e., using ANOVA & t-tests) from Abbey
-MATLAB scripts to compute correlations using fixed-effects models (i.e., 4 EF and 3 Il tasks) from Abbey
-Example R script to run the effect-size resampling written in R by Kelly for SRT task (see "SRT.R" file)
+- MATLAB scripts to analyse task effects using fixed-effects models (i.e., using ANOVA & t-tests) from Abbey
+- MATLAB scripts to compute correlations using fixed-effects models (i.e., 4 EF and 3 Il tasks) from Abbey
+- Example R script to run the effect-size resampling written in R by Kelly for SRT task (see "SRT.R" file)
 
 <b> *Scripts to Generate* </b>
 
-R scripts for the mixed-effects analysis of each task effect
-R scripts to run effect-size resampling on remaining 6 tasks - see example "SRT.R" file
+- R scripts to compute the mixed-effects analysis of each task effect (i.e., for 7 tasks + correlations)
+- R scripts to run effect-size resampling on remaining 6 tasks - see example "SRT.R" file
 
 <b> *Help files* </b>
   
