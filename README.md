@@ -54,3 +54,7 @@ These were organised into 4 tasks that tap executive functions (OS, AB, GNG, SD)
   - Tutorials in R - http://www.bodowinter.com/resources.html
   - "efilids_functions.R"
   - 'R-rainclouds.R"
+
+<b> where to next?: </b>
+
+See the WIKI file for notes on how to analyse the data moving forward. :)
