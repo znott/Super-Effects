@@ -42,13 +42,15 @@ Condition level data is in .xls or .csv format  (analysed by MATLAB scripts from
 
 MATLAB scripts to analyse task effects using fixed-effects models (i.e., using ANOVA & t-tests) from Abbey
 MATLAB scripts to compute correlations using fixed-effects models (i.e., 4 EF and 3 Il tasks) from Abbey
-Example R script to run the effect-size resampling written in R by Kelly for SRT task (see "SRT.r" file)
+Example R script to run the effect-size resampling written in R by Kelly for SRT task (see "SRT.R" file)
 
 <b> *Scripts to Generate* </b>
 
 R scripts for the mixed-effects analysis of each task effect
-R scripts to run effect-size resampling on remaining 6 tasks - see example "SRT.r" file
+R scripts to run effect-size resampling on remaining 6 tasks - see example "SRT.R" file
 
 <b> *Help files* </b>
   
-  Tutorials in R - "... "
+  - Tutorials in R - http://www.bodowinter.com/resources.html
+  - "efilids_functions.R"
+  - 'R-rainclouds.R"
