@@ -22,31 +22,27 @@ source("R_rainclouds.R") # functions for plotting
 # ----------------------------------------------------------------------------------------------------
 # load data and wrangle into tidy form (see https://r4ds.had.co.nz/tidy-data.html), plus relabel to make
 # labels a little simpler
-dat = read.csv("EFIL_313_subs_CC_edits1.csv", header=TRUE)
-dat$Subjects = as.factor(dat$Subjects)
-dat = dat %>% pivot_longer(c('RepAve', 'NovAve'), names_to = "block", values_to="RT") # move to a tidy frame
-dat$block = as.factor(dat$block)
-dat = dat %>% mutate(block = fct_recode(block, # rename the block factor and replace into dataframe
-                                        "repeat" = "RepAve", 
-                                        "novel" = "NovAve"))
+dat = read.csv("../CC_RT_epoch_data_trimmed_longformat2.csv", header=TRUE)
+dat$X <- NULL
+dat$Subjects = as.factor(dat$SubjectNumber) # to keep it consistent across files
+dat$SubjectNumber <- NULL
+
 
 # ----------------------------------------------------------------------------------------------------
 # define levels for simulations
 sub.Ns = seq(23, 303, by = 10) 
-n.perms =1000# for each sample size, we will repeat our experiment n.perms times
+n.perms =10# for each sample size, we will repeat our experiment n.perms times
 
 # ----------------------------------------------------------------------------------------------------
 # define variables for saving plots
-plot.fname = "CC.png"
+plot.fname = "CC_AOV.png"
 width = 5 # in inches
 height = 10
 
 # ----------------------------------------------------------------------------------------------------
 # run simulations, getting p values from t.tests, and cohen's d values, and save results to a list
 subs = unique(dat$Subjects)
-sims = replicate(n.perms, lapply(sub.Ns, function(x) run.t.test.sim(data=dat, iv="block", 
-                                                                    dv="RT", x="repeat", 
-                                                                    y="novel", subs=subs,
+sims = replicate(n.perms, lapply(sub.Ns, function(x) run.aov.CC.sim(data=dat, subs=subs,
                                                                     N=x)), simplify = FALSE)
 
 # ----------------------------------------------------------------------------------------------------
@@ -54,7 +50,7 @@ sims = replicate(n.perms, lapply(sub.Ns, function(x) run.t.test.sim(data=dat, iv
 sims.dat = lapply(seq(1,n.perms,by=1), function(x) do.call(rbind, sims[[x]]))
 sims.dat = do.call(rbind, sims.dat)
 sims.dat$n <- as.factor(sims.dat$n)
-sims.dat = sims.dat %>% pivot_longer(c('p', 'd'), names_to = "measure", values_to="value")
+sims.dat = sims.dat %>% pivot_longer(c('p', 'peta'), names_to = "measure", values_to="value")
 sims.dat$measure <- as.factor(sims.dat$measure)
 
 # ----------------------------------------------------------------------------------------------------

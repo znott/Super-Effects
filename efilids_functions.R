@@ -9,6 +9,9 @@ get.data <- function(data, subs, N){
   data[data$Subjects %in% sample(subs, size=N, replace=TRUE), ]
 }
 
+###### t-test functions
+###### ----------------------------------------------------------------------------
+
 get.ps.t.test <- function(data, iv, dv, x, y){
   # run t.test on the dv between the variables x & y 
   # return the p value
@@ -45,3 +48,32 @@ run.t.test.sim <- function(data, iv, dv, x, y, subs, N, perm){
                     d    = get.cohens.d(data, iv, dv, x, y))
   out
 }
+
+
+###### aov functions for contextual cueing
+###### ----------------------------------------------------------------------------
+get.ps.aov.CC.test <- function(data){
+  # run t.test on the dv between the variables x & y 
+  # return the p value
+  # data = dataframe for testing
+  # dv = name of dv
+
+  an <- aov(RT_ms_trimmed ~ (Condition*Epoch)+Error(Subjects/(Condition*Epoch)), data = data) # not worried about using type 1 sum of squares because the data are balanced, see https://mcfromnz.wordpress.com/2011/03/02/anova-type-iiiiii-ss-explained/
+  p <- summary(an$`Subjects:Condition:Epoch`)[[1]][["Pr(>F)"]]
+  out = list()
+  out$p <- p[!is.na(p)]
+  # compute partial eta squared
+  out$peta <- summary(an$`Subjects:Condition:Epoch`)[[1]]["Sum Sq"][1,1]/sum(summary(an$`Subjects:Condition:Epoch`)[[1]]["Sum Sq"])
+  out
+}
+
+run.aov.CC.sim <- function(data, subs, N, perm){
+# this function runs the sims using the contextual cueing aov  
+  data = get.data(data, subs, N)
+  tmp = get.ps.aov.CC.test(data)
+  out = data.frame( n    = N,
+                    p    = tmp$p,
+                    peta  = tmp$peta)
+  out
+}
+
