@@ -1,5 +1,5 @@
 ### written by K. Garner, April 2020
-### edited by Z. Nott, July 2020
+### edited by Z. Nott, August 2020
 ### for the project 'On the detectability of effects in executive function and implicit learning tasks'
 ### Garner, KG*, Nydam, A*, Nott, Z., & Dux, PE 
 
@@ -16,7 +16,7 @@ setwd(dirname(rstudioapi::getActiveDocumentContext()$path)) # set working direct
 library(tidyverse) # for data wrangling
 library(wesanderson) # palette for some sweet figure colours
 library(cowplot)
-source("efilids_functions_one.sample.t.test.R") # custom functions written for this project
+source("efilids_functions.R") # custom functions written for this project
 source("R_rainclouds.R") # functions for plotting
 
 # ----------------------------------------------------------------------------------------------------
@@ -43,7 +43,7 @@ height = 10
 # ----------------------------------------------------------------------------------------------------
 # run simulations, getting p values from t.tests, and cohen's d values, and save results to a list
 subs = unique(dat$Subjects)
-sims = replicate(n.perms, lapply(sub.Ns, function(x) run.t.test.sim(data=dat, iv="block", 
+sims = replicate(n.perms, lapply(sub.Ns, function(x) run.os.t.test.sim(data=dat, iv="block", 
                                                                     dv="RT", x="accuracy", 
                                                                     subs=subs,
                                                                     N=x)), simplify = FALSE)
@@ -88,7 +88,3 @@ p.p <- ggplot(sims.dat[sims.dat$measure == "p", ], aes(x=n, y=value, fill = n, c
 p = plot_grid(d.p, p.p, labels=c('A', 'B'), label_size = 12)
 p # print out the plot so you can see it
 p = p + ggsave(plot.fname, width = width, height = height, units="in")
-
-
-
-
