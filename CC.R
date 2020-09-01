@@ -1,5 +1,5 @@
 ### written by K. Garner, April 2020
-### edited by Z. Nott, July 2020
+### edited by Z. Nott, August 2020
 ### for the project 'On the detectability of effects in executive function and implicit learning tasks'
 ### Garner, KG*, Nydam, A*, Nott, Z., & Dux, PE 
 
@@ -22,16 +22,15 @@ source("R_rainclouds.R") # functions for plotting
 # ----------------------------------------------------------------------------------------------------
 # load data and wrangle into tidy form (see https://r4ds.had.co.nz/tidy-data.html), plus relabel to make
 # labels a little simpler
-dat = read.csv("../CC_RT_epoch_data_trimmed_longformat2.csv", header=TRUE)
+dat = read.csv("CC_RT_epoch_data_trimmed_longformat2.csv", header=TRUE)
 dat$X <- NULL
 dat$Subjects = as.factor(dat$SubjectNumber) # to keep it consistent across files
 dat$SubjectNumber <- NULL
 
-
 # ----------------------------------------------------------------------------------------------------
 # define levels for simulations
 sub.Ns = seq(23, 303, by = 10) 
-n.perms =10# for each sample size, we will repeat our experiment n.perms times
+n.perms =1000# for each sample size, we will repeat our experiment n.perms times
 
 # ----------------------------------------------------------------------------------------------------
 # define variables for saving plots
@@ -57,12 +56,12 @@ sims.dat$measure <- as.factor(sims.dat$measure)
 # plot the outputs separately - then make 2 panels, 1 with sample size x p-value, 1 with sample size x effect size
 
 # first for d values
-d.p <- ggplot(sims.dat[sims.dat$measure == "d", ], aes(x=n, y=value, fill = n, colour = n)) +
+d.p <- ggplot(sims.dat[sims.dat$measure == "peta", ], aes(x=n, y=value, fill = n, colour = n)) +
   geom_flat_violin(position = position_nudge(x = .25, y = 0),adjust =2, trim =
                      TRUE) +
   geom_boxplot(aes(x = as.numeric(n)+0.25, y = value), outlier.shape = NA,
                alpha = 0.3, width = .1, colour = "BLACK") +
-  ylab('d') + xlab('N') + theme_cowplot() + 
+  ylab('P.Eta') + xlab('N') + theme_cowplot() + 
   guides(fill = FALSE, colour = FALSE) +
   coord_flip() +           
   theme(axis.title.x = element_text(face = "italic"))
@@ -85,7 +84,4 @@ p.p <- ggplot(sims.dat[sims.dat$measure == "p", ], aes(x=n, y=value, fill = n, c
 p = plot_grid(d.p, p.p, labels=c('A', 'B'), label_size = 12)
 p # print out the plot so you can see it
 p = p + ggsave(plot.fname, width = width, height = height, units="in")
-
-
-
 
