@@ -72,25 +72,20 @@ d.p <- ggplot(sims.dat[sims.dat$measure == "d", ], aes(x=n, y=value, fill = n, c
 
 # now for p-values
 p.p <- ggplot(sims.dat[sims.dat$measure == "p", ], aes(x=n, y=value, fill = n, colour = n)) +
-              geom_flat_violin(position = position_nudge(x = .25, y = 0),adjust =2, trim =
-                               TRUE) +
-              geom_boxplot(aes(x = as.numeric(n)+0.25, y = value), outlier.shape = NA,
-                               alpha = 0.3, width = .1, colour = "BLACK") +
-              ylab('p') + xlab('') + theme_cowplot() + ylim(c(0,1)) +
-              geom_hline(aes(yintercept=.05), linetype="dashed") +
-              guides(fill = FALSE, colour = FALSE) +
-              coord_flip() +           
-              theme(axis.title.x = element_text(face = "italic"),
-                    axis.text.y = element_blank())
+  geom_flat_violin(position = position_nudge(x = .25, y = 0),adjust =2, trim =
+                     TRUE) +
+  geom_boxplot(aes(x = as.numeric(n)+0.25, y = value), outlier.shape = NA,
+               alpha = 0.3, width = .1, colour = "BLACK") +
+  ylab('p') + xlab('') + theme_cowplot() + ylim(c(0,1)) +
+  geom_hline(aes(yintercept=.05), linetype="dashed") +
+  guides(fill = FALSE, colour = FALSE) +
+  coord_flip() +           
+  theme(axis.title.x = element_text(face = "italic"),
+        axis.text.y = element_blank())
 
 
 # use cowplot to make a grid
 p = plot_grid(d.p, p.p, labels=c('A', 'B'), label_size = 12)
 p # print out the plot so you can see it
 p = p + ggsave(plot.fname, width = width, height = height, units="in")
-
-
-
-
-
 
