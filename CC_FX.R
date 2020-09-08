@@ -30,7 +30,7 @@ task.order.cc$Task.Order <- factor(task.order.cc$Task.Order)
 task.order.cc$Subj.No <- factor(task.order.cc$Subj.No)
 task.order.cc$Block.No <- factor(task.order.cc$Block.No)
 
-t.o <- task.order.cc %>% ggplot(aes(x=Task.Order, y=RT.ms, fill=Trial.Type)) +
+t.o <- task.order.cc %>% ggplot(aes(x=Task.Order, y=RT.ms, fill=Trial.Type)) + ylim(0,3000) +
   geom_boxplot() +
   facet_wrap(~Block.No)
 t.o
@@ -51,7 +51,7 @@ experimenter.cc$Trial.Type <- factor(experimenter.cc$Trial.Type)
 experimenter.cc$Subj.No <- factor(experimenter.cc$Subj.No)
 experimenter.cc$Block.No <- factor(experimenter.cc$Block.No)
 
-ex <- experimenter.cc %>% ggplot(aes(x=Experimenter, y=RT.ms, fill=Trial.Type)) +
+ex <- experimenter.cc %>% ggplot(aes(x=Experimenter, y=RT.ms, fill=Trial.Type)) + ylim(0,3000) +
   geom_boxplot() +
   facet_wrap(~Block.No)
 ex
@@ -73,7 +73,7 @@ stimulus.cc$Stimulus.Type <- factor(stimulus.cc$Stimulus.Type)
 stimulus.cc$Subj.No <- factor(stimulus.cc$Subj.No)
 stimulus.cc$Block.No <- factor(stimulus.cc$Block.No)
 
-st <- stimulus.cc %>% ggplot(aes(x=Stimulus.Type, y=RT.ms, fill=Trial.Type)) +
+st <- stimulus.cc %>% ggplot(aes(x=Stimulus.Type, y=RT.ms, fill=Trial.Type)) + ylim(0,3000) +
   geom_boxplot() +
   facet_wrap(~Block.No)
 st
