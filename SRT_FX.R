@@ -28,7 +28,7 @@ task.order.srt$Trial.Type <- factor(task.order.srt$Trial.Type)
 task.order.srt$Task.Order <- factor(task.order.srt$Task.Order)
 task.order.srt$Subj.No <- factor(task.order.srt$Subj.No)
 
-t.o <- task.order.srt %>% ggplot(aes(x=Task.Order, y=RT.ms, fill=Trial.Type)) +
+t.o <- task.order.srt %>% ggplot(aes(x=Task.Order, y=RT.ms, fill=Trial.Type)) + ylim(0,2000) +
   geom_boxplot() +
   facet_wrap(~Trial.Type)
 t.o
@@ -40,7 +40,7 @@ experimenter.srt <- dat %>% group_by(Subj.No, Experimenter, Trial.Type, RT.ms)
 experimenter.srt$Subj.No <- factor(experimenter.srt$Subj.No)
 experimenter.srt$Trial.Type <- factor(experimenter.srt$Trial.Type)
 
-ex <- experimenter.srt %>% ggplot(aes(x=Experimenter, y=RT.ms, fill=Trial.Type,)) +
+ex <- experimenter.srt %>% ggplot(aes(x=Experimenter, y=RT.ms, fill=Trial.Type,)) + ylim(0,2000) +
   geom_boxplot() +
   facet_wrap(~Trial.Type)
 ex
