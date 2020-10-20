@@ -1,5 +1,5 @@
 ### written by K. Garner, April 2020
-### edited by Z. Nott, Sept 2020
+### edited by Z. Nott, Oct 2020
 ### for the project 'On the detectability of effects in executive function and implicit learning tasks'
 ### Garner, KG*, Nydam, A*, Nott, Z., & Dux, PE 
 
@@ -23,7 +23,7 @@ dat = read.csv("total_of_313_subs_SRT_task_trial_level_data.csv", header=TRUE)
 
 ##### RT.ms: Trial Type x Task Order
 ##### --------------------------------------------------------
-task.order.srt <- dat %>% group_by(Subj.No, Task.Order, Trial.Type, RT.ms)
+task.order.srt <- dat %>% group_by(Subj.No, Task.Order, Trial.Type, RT.ms) %>% summarise(mean=mean(RT.ms))
 task.order.srt$Trial.Type <- factor(task.order.srt$Trial.Type)
 task.order.srt$Task.Order <- factor(task.order.srt$Task.Order)
 task.order.srt$Subj.No <- factor(task.order.srt$Subj.No)
@@ -36,7 +36,7 @@ t.o
 ##### RT_ms: Trial Type x Experimenter
 ##### --------------------------------------------------------
 
-experimenter.srt <- dat %>% group_by(Subj.No, Experimenter, Trial.Type, RT.ms)
+experimenter.srt <- dat %>% group_by(Subj.No, Experimenter, Trial.Type, RT.ms) %>% summarise(mean=mean(RT.ms))
 experimenter.srt$Subj.No <- factor(experimenter.srt$Subj.No)
 experimenter.srt$Trial.Type <- factor(experimenter.srt$Trial.Type)
 
