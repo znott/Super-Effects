@@ -1,5 +1,5 @@
 ### written by K. Garner, April 2020
-### edited by Z. Nott, Sept 2020
+### edited by Z. Nott, Oct 2020
 ### for the project 'On the detectability of effects in executive function and implicit learning tasks'
 ### Garner, KG*, Nydam, A*, Nott, Z., & Dux, PE 
 
@@ -24,7 +24,7 @@ dat = read.csv("total_of_313_subs_CC_task_trial_level_data.csv", header=TRUE)
 
 ##### RT_ms: Trial Type x Task Order
 ##### --------------------------------------------------------
-task.order.cc <- dat %>% group_by(Subj.No, Task.Order, Block.No, Trial.Type, RT.ms)
+task.order.cc <- dat %>% group_by(Subj.No, Task.Order, Block.No, Trial.Type, RT.ms) %>% summarise(mean=mean(RT.ms))
 task.order.cc$Trial.Type <- factor(task.order.cc$Trial.Type)
 task.order.cc$Task.Order <- factor(task.order.cc$Task.Order)
 task.order.cc$Subj.No <- factor(task.order.cc$Subj.No)
@@ -46,7 +46,7 @@ ggsave(plot.fname, width = width, height = height, units="in", limitsize = FALSE
 
 ##### RT_ms: Trial Type x Experimenter
 ##### --------------------------------------------------------
-experimenter.cc <- dat %>% group_by(Subj.No, Experimenter, Block.No, Trial.Type, RT.ms)
+experimenter.cc <- dat %>% group_by(Subj.No, Experimenter, Block.No, Trial.Type, RT.ms) %>% summarise(mean=mean(RT.ms))
 experimenter.cc$Trial.Type <- factor(experimenter.cc$Trial.Type)
 experimenter.cc$Subj.No <- factor(experimenter.cc$Subj.No)
 experimenter.cc$Block.No <- factor(experimenter.cc$Block.No)
@@ -67,7 +67,7 @@ ggsave(plot.fname, width = width, height = height, units="in", limitsize = FALSE
 
 ### RT_ms: Trial Type x Stimulus Type
 ##### --------------------------------------------------------
-stimulus.cc <- dat %>% group_by(Subj.No, Stimulus.Type, Block.No, Trial.Type, RT.ms)
+stimulus.cc <- dat %>% group_by(Subj.No, Stimulus.Type, Block.No, Trial.Type, RT.ms) %>% summarise(mean=mean(RT.ms))
 stimulus.cc$Trial.Type <- factor(stimulus.cc$Trial.Type)
 stimulus.cc$Stimulus.Type <- factor(stimulus.cc$Stimulus.Type)
 stimulus.cc$Subj.No <- factor(stimulus.cc$Subj.No)
