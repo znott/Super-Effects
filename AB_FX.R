@@ -1,5 +1,5 @@
 ### written by K. Garner, April 2020
-### edited by Z. Nott, Sept 2020
+### edited by Z. Nott, Oct 2020
 ### for the project 'On the detectability of effects in executive function and implicit learning tasks'
 ### Garner, KG*, Nydam, A*, Nott, Z., & Dux, PE 
   
@@ -42,6 +42,7 @@ experimenter.T2gT1 <- dat %>% group_by(Subj.No, Experimenter, Trial.Type) %>%
 experimenter.T2gT1$Subj.No <- factor(experimenter.T2gT1$Subj.No)
 experimenter.T2gT1$Trial.Type <- factor(experimenter.T2gT1$Trial.Type)
 
+### plot data
 ex <- experimenter.T2gT1 %>% ggplot(aes(x=Experimenter, y=acc, fill=Trial.Type,)) +
   geom_boxplot() +
   facet_wrap(~Trial.Type)
@@ -60,3 +61,12 @@ height = 10
 
 #save output
 p = p + ggsave(plot.fname, width = width, height = height, units="in", limitsize = FALSE)
+
+###---------------------------------------------------------------------
+### create barplot to see experimenter frequency for T2|T1 data
+dat.ex.T2gT1 <- table(experimenter.T2gT1$Experimenter)
+range(dat.ex.T2gT1)
+view(dat.ex.T2gT1)
+par( mar = c( 2.1, 4.1, 2.1, 2.1) )
+barplot(height = dat.ex.T2gT1, ylab = "Frequency", main = "Participants per Experimenter", names.arg = 'Experimenters')
+ 
