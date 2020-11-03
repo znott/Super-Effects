@@ -19,20 +19,23 @@ library(cowplot)
 
 # load data and wrangle into tidy form (see https://r4ds.had.co.nz/tidy-data.html), plus relabel to make
 # labels a little simpler
-dat = read.csv("total_of_313_subs_CC_task_trial_level_data.csv", header=TRUE)
+dat = read.csv("../total_of_313_subs_CC_task_trial_level_data.csv", header=TRUE)
 
 
 ##### RT_ms: Trial Type x Task Order
 ##### --------------------------------------------------------
-task.order.cc <- dat %>% group_by(Subj.No, Task.Order, Block.No, Trial.Type, RT.ms) %>% summarise(mean=mean(RT.ms))
+task.order.cc <- dat %>% group_by(Task.Order, Block.No, Trial.Type) %>% 
+                                  filter(RT.ms>.2) %>%
+                                  filter(RT.ms < (mean(RT.ms) + 2.5*sd(RT.ms))) %>%
+                                  summarise(mean=mean(RT.ms))
 task.order.cc$Trial.Type <- factor(task.order.cc$Trial.Type)
 task.order.cc$Task.Order <- factor(task.order.cc$Task.Order)
-task.order.cc$Subj.No <- factor(task.order.cc$Subj.No)
+#task.order.cc$Subj.No <- factor(task.order.cc$Subj.No)
 task.order.cc$Block.No <- factor(task.order.cc$Block.No)
 
-t.o <- task.order.cc %>% ggplot(aes(x=Task.Order, y=RT.ms, fill=Trial.Type)) + ylim(0,3000) +
-  geom_boxplot() +
-  facet_wrap(~Block.No)
+t.o <- task.order.cc %>% ggplot(aes(x=Block.No, y=mean, group=Trial.Type)) +
+  geom_line() +  ylim(500,2000) +
+  facet_wrap(~Task.Order)
 t.o
 
 # define variables for saving plots
@@ -46,14 +49,18 @@ ggsave(plot.fname, width = width, height = height, units="in", limitsize = FALSE
 
 ##### RT_ms: Trial Type x Experimenter
 ##### --------------------------------------------------------
-experimenter.cc <- dat %>% group_by(Subj.No, Experimenter, Block.No, Trial.Type, RT.ms) %>% summarise(mean=mean(RT.ms))
+experimenter.cc <- dat %>% group_by(Experimenter, Block.No, Trial.Type) %>% 
+                           filter(RT.ms>.2) %>%
+                           filter(RT.ms < (mean(RT.ms) + 2.5*sd(RT.ms))) %>%
+                           summarise(mean=mean(RT.ms))
+
 experimenter.cc$Trial.Type <- factor(experimenter.cc$Trial.Type)
-experimenter.cc$Subj.No <- factor(experimenter.cc$Subj.No)
+#experimenter.cc$Subj.No <- factor(experimenter.cc$Subj.No)
 experimenter.cc$Block.No <- factor(experimenter.cc$Block.No)
 
-ex <- experimenter.cc %>% ggplot(aes(x=Experimenter, y=RT.ms, fill=Trial.Type)) + ylim(0,3000) +
-  geom_boxplot() +
-  facet_wrap(~Block.No)
+ex <- experimenter.cc %>% ggplot(aes(x=Block.No, y=mean, group=Trial.Type, fill=Trial.Type, col=Trial.Type)) +
+      geom_line() + ylim(500,1500) +
+      facet_wrap(~Experimenter)
 ex
 
 # define variables for saving plots

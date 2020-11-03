@@ -19,7 +19,7 @@ library(cowplot)
 
 # load data and wrangle into tidy form (see https://r4ds.had.co.nz/tidy-data.html), plus relabel to make
 # labels a little simpler
-dat = read.csv("total_of_313_subs_AB_task_trial_level_data.csv", header=TRUE)
+dat = read.csv("../total_of_313_subs_AB_task_trial_level_data.csv", header=TRUE)
 
 ##### T2|T1: Trial Type x Task Order
 ##### --------------------------------------------------------
@@ -32,6 +32,10 @@ task.order.T2gT1$Subj.No <- factor(task.order.T2gT1$Subj.No)
 t.o <- task.order.T2gT1 %>% ggplot(aes(x=Task.Order, y=acc, fill=Trial.Type)) +
   geom_boxplot() +
   facet_wrap(~Trial.Type)
+
+t.o <- task.order.T2gT1 %>% ggplot(aes(x=Trial.Type, y=acc, fill=Trial.Type)) +
+  geom_boxplot() +
+  facet_wrap(~Task.Order)
 t.o
 
 ##### T2|T1: Trial Type x Experimenter
@@ -46,7 +50,17 @@ experimenter.T2gT1$Trial.Type <- factor(experimenter.T2gT1$Trial.Type)
 ex <- experimenter.T2gT1 %>% ggplot(aes(x=Experimenter, y=acc, fill=Trial.Type,)) +
   geom_boxplot() +
   facet_wrap(~Trial.Type)
+experimenter.T2gT1 %>% ggplot(aes(x=Trial.Type, y=acc, fill=Trial.Type,)) +
+  geom_boxplot() +
+  facet_wrap(~Experimenter)
 ex
+
+# average for each experimenter
+experimenter.T2gT1 %>% group_by(Experimenter, Trial.Type) %>%
+                       summarise(acc=mean(acc)) %>%
+                       ggplot(aes(x=Trial.Type, y=acc, group=Experimenter)) +
+                       geom_line()
+
 
 #### use cowplot to make a grid
 ####-----------------------------------------------------
