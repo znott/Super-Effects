@@ -58,18 +58,19 @@ rfx.dat <- dat %>% group_by(Subj.No, Block.No.Names) %>%
 # ----------------------------------------------------------------------------------------------------
 
 sub.Ns = seq(23, 303, by = 10) 
-n.perms =10# for each sample size, we will repeat our experiment n.perms times
+n.perms =1000# for each sample size, we will repeat our experiment n.perms times
 
 # ----------------------------------------------------------------------------------------------------
 # define variables for saving plots
 # ----------------------------------------------------------------------------------------------------
 
 plot.fname = "SRT.png"
+rfx.plot.fname = "SRT_rfx.png"
 width = 10 # in inches
 height = 10
 
 # ----------------------------------------------------------------------------------------------------
-# run simulations, getting p values from t.tests, and cohen's d values, and save results to a list
+# run simulations, getting p values from linear models, and cohen's d values, and save results to a list
 # ----------------------------------------------------------------------------------------------------
 subs = unique(dat$Subj.No)
 sims = replicate(n.perms, lapply(sub.Ns, function(x) run.SRT.sim(data=ffx.dat, 
@@ -84,6 +85,7 @@ sims = replicate(n.perms, lapply(sub.Ns, function(x) run.SRT.sim(data=ffx.dat,
 
 sims.dat = lapply(seq(1,n.perms,by=1), function(x) do.call(rbind, sims[[x]]))
 sims.dat = do.call(rbind, sims.dat)
+sims.dat = sims.dat %>% select(-c('esub', 'eRes'))
 sims.dat$n <- as.factor(sims.dat$n)
 sims.dat = sims.dat %>% pivot_longer(c('p', 'd'), names_to = "measure", values_to="value")
 sims.dat$measure <- as.factor(sims.dat$measure)
@@ -107,7 +109,8 @@ rfx.sims = replicate(n.perms, lapply(sub.Ns, function(x) run.SRT.sim(data=rfx.da
 tmp = lapply(seq(1,n.perms,by=1), function(x) do.call(rbind, rfx.sims[[x]]))
 tmp = do.call(rbind, tmp)
 tmp$n <- as.factor(tmp$n)
-tmp = tmp %>% pivot_longer(c('p', 'd'), names_to = "measure", values_to = "value")
+rfx = tmp %>% select(n, esub, eRes)
+tmp = tmp %>% select(-c('esub','eRes')) %>% pivot_longer(c('p', 'd'), names_to = "measure", values_to = "value")
 tmp$measure <- as.factor(tmp$measure)
 tmp$model = "RFX"
 sims.dat = rbind(sims.dat, tmp)
@@ -119,8 +122,9 @@ rm(tmp)
 # ----------------------------------------------------------------------------------------------------
 
 # first for d values
-ffx.d.p <- plt.fx.sz(sims.dat[sims.dat$model == "FFX", ])
-rfx.d.p <- plt.fx.sz(sims.dat[sims.dat$model == "RFX", ])
+ylims = c(0,2)
+ffx.d.p <- plt.fx.sz(sims.dat[sims.dat$model == "FFX", ], ylims)
+rfx.d.p <- plt.fx.sz(sims.dat[sims.dat$model == "RFX", ], ylims)
 
 # now for p-values
 ffx.p.p <- plt.ps(sims.dat[sims.dat$model=="FFX",])
@@ -131,7 +135,15 @@ p = plot_grid(ffx.d.p, rfx.d.p, ffx.p.p, rfx.p.p, labels=c('A', 'B', 'C', 'D'), 
 p # print out the plot so you can see it
 p = p + ggsave(plot.fname, width = width, height = height, units="in")
 
+
+# ----------------------------------------------------------------------------------------------------
+# now a raincloud plot of the sources of randomness in the model
+# ----------------------------------------------------------------------------------------------------
+
+rfx.p <- plot.rfx(rfx, c(100, 4000))
+rfx.p = rfx.p + ggsave(rfx.plot.fname, width = width/2, height = height/2, units="in")
+
 # ----------------------------------------------------------------------------------------------------
 # save the data of import to an RData file
 # ----------------------------------------------------------------------------------------------------
-save(sims.dat, file="SRT_sim_data.RData")
+save(sims.dat, rfx, file="SRT_sim_data.RData")

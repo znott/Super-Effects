@@ -101,7 +101,6 @@ run.os.t.test.sim <- function(data, iv, dv, x, subs, N, perm){
 #### -------------------------------------------------------------------------------------------------
 
 # NOTE: the ffx aov model for CC (defined below) also works for SRT
-
 run.lme.4.srt <- function(data, dv){
   # run a linear mixed effects analysis
   # going to take the interaction of block x sequence/random as the effect from 
@@ -109,15 +108,21 @@ run.lme.4.srt <- function(data, dv){
   # for comparison with the ffx analysis: see https://www.journalofcognition.org/articles/10.5334/joc.10/
   # and https://psycnet-apa-org.ezproxy.library.uq.edu.au/fulltext/2014-32656-001.html
   names(data) <- c("sub", "task.order", "exp", "block", "trialtype", "RT")  
-  mod <- lmer(eval(parse(text=dv)) ~ block*trialtype + (1|sub) + (1|task.order) + (1|exp),
+  # FOR THE SRT TASK, ALSO FOUND THAT A BOUNDARY (SINGULAR) FIT WHEN INCLUDING RFX OF EXPERIMENTOR AND TASK ORDER
+  mod <- lmer(eval(parse(text=dv)) ~ block*trialtype + (1|sub),
               data=data, REML=FALSE)
-  null <- lmer(eval(parse(text=dv)) ~ block + (1|sub) + (1|task.order) + (1|exp),
+  null <- lmer(eval(parse(text=dv)) ~ block + (1|sub),
                data=data, REML=FALSE)
   d <- abs(summary(mod)$coefficients["block:trialtypeSequence Block","Estimate"])/sqrt(sum(as.data.frame(VarCorr(mod))$sdcor^2)) # get the variance of the random effects
   p <-anova(mod, null)$`Pr(>Chisq)`[2]
   out = list()
   out$p = p
   out$d = d
+  df = as.data.frame(VarCorr(mod))
+  out$esub = df$sdcor[df$grp=="sub"]^2
+#  out$eexp = df$sdcor[df$grp=="exp"]^2
+#  out$etask = df$sdcor[df$grp=="task.order"]^2  
+  out$eRes = df$sdcor[df$grp=="Residual"]^2  
   out
 }
 
@@ -127,12 +132,20 @@ run.SRT.sim <- function(data, subs, N, dv, fx){
   data = get.data(data, subs, N)
   if (fx == "ffx"){
     tmp = get.ps.aov.CC.SRT(data, dv)
+    tmp$esub = NA
+#    tmp$etask = NA
+#    tmp$eexp = NA
+    tmp$eRes = NA
   } else if (fx == "rfx"){
     tmp = run.lme.4.srt(data, dv)
   }
   out = data.frame( n    = N,
                     p    = tmp$p,
-                    d    = tmp$d)
+                    d    = tmp$d,
+                    esub = tmp$esub,
+#                    etask = tmp$etask,
+#                    eexp = tmp$eexp,
+                    eRes = tmp$eRes)
   out
 }
 
@@ -167,13 +180,20 @@ run.lme.4.cc <- function(data, dv){
   # for comparison with the ffx analysis: see https://www.journalofcognition.org/articles/10.5334/joc.10/
   # and https://psycnet-apa-org.ezproxy.library.uq.edu.au/fulltext/2014-32656-001.html
   names(data) <- c("sub", "task.order", "exp", "block", "trialtype", "RT")  
-  mod <- lmer(eval(parse(text=dv)) ~ block*trialtype + (1|sub) + (1|task.order) + (1|exp),
+  mod <- lmer(eval(parse(text=dv)) ~ block*trialtype + (1|sub),
               data=data, REML=FALSE)
-  null <- lmer(eval(parse(text=dv)) ~ block + (1|sub) + (1|task.order) + (1|exp),
+  null <- lmer(eval(parse(text=dv)) ~ block + (1|sub),
                data=data, REML=FALSE)
   d <- abs(summary(mod)$coefficients["block:trialtypeRepeated","Estimate"])/sqrt(sum(as.data.frame(VarCorr(mod))$sdcor^2)) # get the variance of the random effects
   p <-anova(mod, null)$`Pr(>Chisq)`[2]
   out = list()
+
+  df = as.data.frame(VarCorr(mod))
+  out$esub = df$sdcor[df$grp=="sub"]^2
+  # out$eexp = df$sdcor[df$grp=="exp"]^2
+  # out$etask = df$sdcor[df$grp=="task.order"]^2  
+  out$eRes = df$sdcor[df$grp=="Residual"]^2  
+  
   out$p = p
   out$d = d
   out
@@ -185,14 +205,104 @@ run.aov.CC.sim <- function(data, subs, N, dv, fx){
   data = get.data(data, subs, N)
   if (fx == "ffx"){
     tmp = get.ps.aov.CC.SRT(data, dv)
+    tmp$esub = NA
+    # tmp$etask = NA
+    # tmp$eexp = NA
+    tmp$eRes = NA
   } else if (fx == "rfx"){
     tmp = run.lme.4.cc(data, dv)
   }
   out = data.frame( n    = N,
                     p    = tmp$p,
-                    d    = tmp$d)
+                    d    = tmp$d,
+                    esub = tmp$esub,
+                    # etask = tmp$etask,
+                    # eexp = tmp$eexp,
+                    eRes = tmp$eRes)
   out
 }
+
+
+# ----------------------------------------------------------------------------------------------------
+###### aov and LME functions for SD data
+#### -------------------------------------------------------------------------------------------------
+get.ps.aov.SD <- function(data, dv){
+  # run aov on the contextual cueing data
+  # return the p value, and the conversion of peta to d
+  # data = dataframe for testing
+  # dv = name of dv (typically RT)
+  
+  # NOTE: This also works for SRT data
+  
+  names(data) <- c("sub", "task", "trialtype", "RT")
+  an <- aov(eval(parse(text=dv)) ~ (task*trialtype)+Error(sub/(task*trialtype)), data = data) # not worried about using type 1 sum of squares because the data are balanced, see https://mcfromnz.wordpress.com/2011/03/02/anova-type-iiiiii-ss-explained/
+  p <- summary(an$`Within`)[[1]][["Pr(>F)"]][2] # we care about main effect of trial type
+  out = list()
+  out$p <- p
+  # compute partial eta squared and convert to d (see https://www.journalofcognition.org/articles/10.5334/joc.10/)
+  peta <- summary(an$`Within`)[[1]]["Sum Sq"][2,1]/sum(summary(an$`Within`)[[1]]["Sum Sq"])
+  out$d <- sqrt((4*peta)/(1-peta))
+  out
+}
+
+run.lme.4.SD <- function(data, dv){
+  # run a linear mixed effects analysis
+  # going to take the difference between lag 2 and lag 7 as the effect from 
+  # which to calculate the recommended d value, 
+  # for comparison with the ffx analysis: see https://www.journalofcognition.org/articles/10.5334/joc.10/
+  # and https://psycnet-apa-org.ezproxy.library.uq.edu.au/fulltext/2014-32656-001.html
+  names(data) <- c("sub", "task.order", "exp", "task", "trialtype", "RT")  
+  # NOTE: when I had the following RFX structure (1|sub) + (1|task.order) + (1|exp) the fit was singular, suggesting
+  # the RFX structure is too complex for the data - https://stats.stackexchange.com/questions/378939/dealing-with-singular-fit-in-mixed-models
+  # therefore am testing the removal of each element of the rfx structure, starting with task.order.
+  # Dropping task.order (with N=23) was far superior to dropping experimenter:
+  # Formula: eval(parse(text = dv)) ~ trialtype * task + (1 | sub) + (1 |      exp)
+  # Data: tmp
+  # AIC        BIC     logLik   deviance   df.resid 
+  # -1675.0323 -1639.1048   844.5161 -1689.0323       1245 
+  
+  # Formula: eval(parse(text = dv)) ~ trialtype * task + (1 | sub) + (1 |      task.order)
+  # Data: data
+  # AIC       BIC    logLik  deviance  df.resid 
+  # -132.5054 -114.8529   73.2527 -146.5054        85 
+  # FITS still singular with exp, so dropping that also. The remaining model only has a singular fit a small number of times
+
+  mod <- lmer(eval(parse(text=dv)) ~ trialtype*task + (1|sub),
+              data=data, REML=FALSE)
+  null <- lmer(eval(parse(text=dv)) ~ task + (1|sub),
+               data=data, REML=FALSE)
+  d <- abs(summary(mod)$coefficients["trialtypesingle","Estimate"])/sqrt(sum(as.data.frame(VarCorr(mod))$sdcor^2)) # get the variance of the random effects
+  p <-anova(mod, null)$`Pr(>Chisq)`[2]
+  out = list()
+  out$p = p
+  out$d = d
+  # below is hard coded and clunky - beware! largely done this way because of past decisions!
+  out$esub = (as.data.frame(VarCorr(mod))$sdcor^2)[1]
+  out$eRes = (as.data.frame(VarCorr(mod))$sdcor^2)[2]
+  #list(out, as.data.frame(VarCorr(mod)))
+  out
+}
+
+run.SD.sim <- function(data, subs, N, dv, fx){
+  # this function runs the sims for SD
+  # data = conforms to the requirements for get.ps.aov.SD or run.lme.4.SD
+  data = get.data(data, subs, N)
+  if (fx == "ffx"){
+    tmp = get.ps.aov.SD(data, dv)
+    tmp$esub = NA
+    tmp$eexp = NA
+    tmp$eRes = NA
+  } else if (fx == "rfx"){
+    tmp = run.lme.4.SD(data, dv)
+  }
+  out = data.frame( n    = N,
+                    p    = tmp$p,
+                    d    = tmp$d,
+                    esub = tmp$esub,
+                    eRes = tmp$eRes)
+  out
+}
+
 
 # ----------------------------------------------------------------------------------------------------
 ###### aov and LME functions for AB data
@@ -222,15 +332,22 @@ run.lme.4.aov <- function(data, dv){
   # for comparison with the ffx analysis: see https://www.journalofcognition.org/articles/10.5334/joc.10/
   # and https://psycnet-apa-org.ezproxy.library.uq.edu.au/fulltext/2014-32656-001.html
   names(data) <- c("sub", "task.order", "exp", "lag", "T1", "T2gT1")  
-  mod <- lmer(eval(parse(text=dv)) ~ lag + (1|sub) + (1|task.order) + (1|exp),
+  mod <- lmer(eval(parse(text=dv)) ~ lag + (1|sub),
               data=data, REML=FALSE)
-  null <- lmer(eval(parse(text=dv)) ~ + (1|sub) + (1|task.order) + (1|exp),
+  null <- lmer(eval(parse(text=dv)) ~ (1|sub),
                data=data, REML=FALSE)
   d <- summary(mod)$coefficients["laglag_7","Estimate"]/sqrt(sum(as.data.frame(VarCorr(mod))$sdcor^2)) # get the variance of the random effects
   p <-anova(mod, null)$`Pr(>Chisq)`[2]
   out = list()
+  
+  df = as.data.frame(VarCorr(mod))
+  out$esub = df$sdcor[df$grp=="sub"]^2
+  # out$eexp = df$sdcor[df$grp=="exp"]^2
+  # out$etask = df$sdcor[df$grp=="task.order"]^2  
+  out$eRes = df$sdcor[df$grp=="Residual"]^2  
   out$p = p
   out$d = d
+  
   out
 }
 
@@ -245,12 +362,20 @@ run.aov.AB.sim <- function(data, subs, N, dv, fx){
   data = get.data(data, subs, N)
   if (fx == "ffx"){
     tmp = get.ps.aov.AB(data, dv)
+    tmp$esub = NA
+    # tmp$etask = NA
+    # tmp$eexp = NA
+    tmp$eRes = NA
   } else if (fx == "rfx"){
     tmp = run.lme.4.aov(data, dv)
   }
   out = data.frame( n    = N,
                     p    = tmp$p,
-                    d    = tmp$d)
+                    d    = tmp$d,
+                    esub = tmp$esub,
+                    # etask = tmp$etask,
+                    # eexp = tmp$eexp,
+                    eRes = tmp$eRes)
   out
 }
 
@@ -259,7 +384,7 @@ run.aov.AB.sim <- function(data, subs, N, dv, fx){
 # Plotting
 # ----------------------------------------------------------------------------------------------------
 
-plt.fx.sz <- function(data){
+plt.fx.sz <- function(data, ylims){
   # plot effect size, given dataframe of 'n', 'measure', and 'value'
   data %>% filter(measure=="d") %>%
     ggplot(mapping=aes(x=n, y=value, fill = n, colour = n)) +
@@ -267,7 +392,7 @@ plt.fx.sz <- function(data){
                        TRUE) +
     geom_boxplot(aes(x = as.numeric(n)+0.25, y = value), outlier.shape = NA,
                  alpha = 0.3, width = .1, colour = "BLACK") +
-    ylab('d') + xlab('N') + theme_cowplot() + 
+    ylab('d') + xlab('N') + theme_cowplot() + ylim(ylims) +
     guides(fill = FALSE, colour = FALSE) +
     coord_flip() + ggtitle(data$model[1]) +          
     theme(axis.title.x = element_text(face = "italic"))
@@ -287,4 +412,20 @@ plt.ps <- function(data){
     coord_flip() +           
     theme(axis.title.x = element_text(face = "italic"),
           axis.text.y = element_blank())
+}
+
+plot.rfx <- function(data, ylims){
+  # plot the estimated variance of the rfx error terms
+  # data has columns n, e*
+  data %>% pivot_longer(names(data)[names(data) != "n"], names_to = "rfx", values_to="var") %>%
+    ggplot(mapping=aes(x=n, y=var, fill = n, colour = n)) +
+    geom_flat_violin(position = position_nudge(x = .25, y = 0), adjust =2, trim =
+                       TRUE) +
+    geom_boxplot(aes(x = as.numeric(n)+0.25, y = var), outlier.shape = NA,
+                 alpha = 0.3, width = .1, colour = "BLACK") +
+    ylab('var') + xlab('N') + theme_cowplot() + ylim(ylims) +
+    facet_wrap(~rfx) +
+    guides(fill = FALSE, colour = FALSE) +
+    coord_flip() +          
+    theme(axis.title.x = element_text(face = "italic"))
 }
