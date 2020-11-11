@@ -13,7 +13,9 @@ get.data <- function(data, subs, N){
   # return a dataframe with that number of subs returned by replacement
   # **first column of data must be the subject numbers!**
   names(data)[1] = "Subjects"
-  data[data$Subjects %in% sample(subs, size=N, replace=TRUE), ]
+  tmp <- lapply(sample(subs, size=N, replace=TRUE), function(x) data[data$Subjects == x, ])
+  data <- do.call(rbind, tmp)
+  data
 }
 
 # ----------------------------------------------------------------------------------------------------
@@ -57,10 +59,11 @@ run.t.test.sim <- function(data, iv, dv, x, y, subs, N, perm){
   out
 }
 
-###### t-test functions (one sample t test)
-###### ----------------------------------------------------------------------------
+###### -----------------------------------------------------------------------------------------------
+###### t-test functions (one sample t test, used for VSL)
+###### -----------------------------------------------------------------------------------------------
 
-get.os.t.test <- function(data, iv, dv, x){
+get.os.t.test <- function(data, dv){
   # run one sample t.test 
   # return the p value
   # data = dataframe for testing
@@ -68,33 +71,124 @@ get.os.t.test <- function(data, iv, dv, x){
   # dv = name of dv
   # x = iv
   t.dat = data[eval(dv)]
-  t.idx = data[eval(iv)] == x
-  t = t.test(t.dat[t.idx == TRUE], alt = "greater", mu = 0.5)
+#  t.idx = data[eval(iv)] == x
+#  t = t.test(t.dat[t.idx == TRUE], alt = "greater", mu = 0.5)
+  t = t.test(t.dat, alt = "greater", mu = 0.5)
   t$p.value
 }
 
-get.os.cohens.d <- function(data, iv, dv, x){
+get.os.cohens.d <- function(data, dv){
   # get Cohen's d measure for one sample t test
   # data = dataframe for testing
   # iv = name of iv
   # dv = name of dv
   # x = iv
   d.dat = data[eval(dv)]
-  d.idx = data[eval(iv)] == x
+  #d.idx = data[eval(iv)] == x
   meanH0 = 0.5
-  sd = sd( d.dat[d.idx == TRUE])
-  d = (mean(d.dat[d.idx == TRUE]) - meanH0) / sd
+  # sd = sd( d.dat[d.idx == TRUE])
+  sd = sd( d.dat$acc )
+  # d = (mean(d.dat[d.idx == TRUE]) - meanH0) / sd
+  d = (mean(d.dat$acc) - meanH0) / sd
   d
 }
 
-run.os.t.test.sim <- function(data, iv, dv, x, subs, N, perm){
+run.os.t.test.sim <- function(data, dv, subs, N, perm){
   
   data = get.data(data, subs, N)
   out = data.frame( n    = N,
-                    p    = get.os.t.test(data, iv, dv, x),
-                    d    = get.os.cohens.d(data, iv, dv, x))
+                    p    = get.os.t.test(data, dv),
+                    d    = get.os.cohens.d(data, dv))
   out
 }
+
+###### -----------------------------------------------------------------------------------------------
+###### prevalence statistics functions
+###### -----------------------------------------------------------------------------------------------
+
+run.mont.frst.lvl <- function(data, N){
+  # data = 1 participants VSL data! N = number of montecarlo simulations
+  # https://arxiv.org/pdf/1512.00810.pdf
+  # see Algorithm section
+  # As 24! is in the millions, going to do a monte carlo sampling for the first level permutation
+  sub.data <- data.frame(sub=rep(data$Subj.No[1], times=N),
+                         acc=NA)
+  sub.data$acc[1] = with(data, mean(Target.Order==Response))
+  sub.data$acc[2:N]=replicate(N-1, with(data, mean(sample(Target.Order)==Response)))
+  sub.data
+}
+
+run.mont.frst.lvl.over.subs <- function(data,N){
+  # feed in all VSL data and the number of monte carlo perms to run (N)
+  # will apply the run.mont.frst.lvl over each subject and return a dataframe
+  # note: the first permutation is the preserved orderings, as they occurred in the experiment
+  subs <- unique(data$Subj.No)
+  perms <- lapply(subs, function(x) run.mont.frst.lvl(data=data[data$Subj.No==x,],N=N))
+  perms <- do.call(rbind, perms)
+  perms$p <- seq(1,N, by=1)
+  perms
+}
+
+run.scnd.lvl.mc <- function(data, N, k){
+  # this will generate a second level distribution across all subjects for the 
+  # randomly selected N participans
+  # for each N, we generate a distribution of k samples
+  # this will then be drawn from for the prevalence stat/subject size sampling
+  # data = perms, output from run.mont.frst.lvl.over.subs
+  # N = number of samplings 
+  
+  # returns a vector where the 1st column reflects the true minimum accuracy
+  # the remaining elements reflect the minimum stat for the randomly sampled participant values
+ 
+  # 1) select N subjects
+  subs = unique(data$sub)
+  tmp <- get.data(data, subs, N)
+  
+  ###########################################################################
+  # 2) Run Minimum statistic prevalence test
+  # My logic here is to follow the prevalence statistic as set out by Allefeld (see https://arxiv.org/pdf/1512.00810.pdf)
+  # using the prevalence null hypothesis (but not the spatially distributed null)
+  # By assessing the gamma at which the null can be rejected (the probability of sampling a given accuracy from the population,
+  # given that accuracy has p = 1-gamma of being from the null, and gamma of not being the null, we can ask to 
+  # what extent we see a prevalance of above chance accuracy in the current population)
+  
+  # set up vector and allocate the true minimum accuracy
+  sl <- rep(NA, times=k)
+  sl[1] <- with(tmp, min(acc[p==1]))
+  # for the remaining values, sample a permuted accuracy from each subject and take the minimum, do this k-1 times
+  perms = matrix(nrow=N, replicate(k-1, sapply(tmp$Subjects[tmp$p==1], function(x) sample(tmp$acc[tmp$Subjects == x & tmp$p!=1],1))), byrow = FALSE)
+  sl[2:length(sl)] <- apply(perms, 2, min)
+  
+  # compute the minimum p-value for the global null hypothesis as defined in equation 24 of https://arxiv.org/pdf/1512.00810.pdf
+  p = (1/k)*sum(sl[1] <= sl)
+  
+  # now use equation 19 to compute Pn
+  gamma_null = seq(0.05, 1, by=.05)
+  pn <- ((1-gamma_null) * p^(1/N) + gamma_null)^N
+  
+  # now compute the largest gamma_0 such that the corresponding null hypothesis can 
+  # still be rejected given alpha (equation 20)
+  alpha = .05
+  if (sum(pn<alpha) > 0){
+    
+      prev=max(gamma_null[pn<alpha])
+      p_prev=pn[pn<alpha]
+      p_prev=p_prev[length(p_prev)]
+      
+  } else {
+    
+    prev = 0
+    p_prev = max(pn)
+    
+  }
+  ###########################################################################
+  # 3) output data
+  sub.data <- data.frame(N=N,
+                         prev=prev,
+                         p=p_prev)
+  sub.data
+}
+
 
 # ----------------------------------------------------------------------------------------------------
 ###### LME and sim functions for SRT data
@@ -384,48 +478,89 @@ run.aov.AB.sim <- function(data, subs, N, dv, fx){
 # Plotting
 # ----------------------------------------------------------------------------------------------------
 
+# plt.fx.sz <- function(data, ylims){
+#   # plot effect size, given dataframe of 'n', 'measure', and 'value'
+#   data %>% filter(measure=="d") %>%
+#     ggplot(mapping=aes(x=n, y=value, fill = n, colour = n)) +
+#     geom_flat_violin(position = position_nudge(x = .25, y = 0),adjust =2, trim =
+#                        TRUE) +
+#     geom_boxplot(aes(x = as.numeric(n)+0.25, y = value), outlier.shape = NA,
+#                  alpha = 0.3, width = .1, colour = "BLACK") +
+#     ylab('d') + xlab('N') + theme_cowplot() + ylim(ylims) +
+#     guides(fill = FALSE, colour = FALSE) +
+#     coord_flip() + ggtitle(data$model[1]) +          
+#     theme(axis.title.x = element_text(face = "italic"))
+# }
+
 plt.fx.sz <- function(data, ylims){
   # plot effect size, given dataframe of 'n', 'measure', and 'value'
   data %>% filter(measure=="d") %>%
-    ggplot(mapping=aes(x=n, y=value, fill = n, colour = n)) +
-    geom_flat_violin(position = position_nudge(x = .25, y = 0),adjust =2, trim =
-                       TRUE) +
-    geom_boxplot(aes(x = as.numeric(n)+0.25, y = value), outlier.shape = NA,
-                 alpha = 0.3, width = .1, colour = "BLACK") +
-    ylab('d') + xlab('N') + theme_cowplot() + ylim(ylims) +
+    ggplot(mapping=aes(x=value, y=n, fill = n, colour = n)) +
+    geom_density_ridges(alpha=0.5) +
+    theme_ridges() +
+    xlab('d') + ylab('N') + theme_cowplot() + xlim(ylims) +
+    scale_y_discrete(breaks = seq(23, 303, by = 20), labels=as.character(seq(23, 303, by = 20))) +
     guides(fill = FALSE, colour = FALSE) +
-    coord_flip() + ggtitle(data$model[1]) +          
+    ggtitle(data$model[1]) +          
     theme(axis.title.x = element_text(face = "italic"))
 }
 
-plt.ps <- function(data){
+
+# plt.ps <- function(data){
+#   # same as plt.fx.sz but for p values.
+#   data %>% filter(measure == "p") %>%
+#     ggplot(mapping=aes(x=n, y=value, fill = n, colour = n)) +
+#     geom_flat_violin(position = position_nudge(x = .25, y = 0),adjust =2, trim =
+#                        TRUE) +
+#     geom_boxplot(aes(x = as.numeric(n)+0.25, y = value), outlier.shape = NA,
+#                  alpha = 0.3, width = .1, colour = "BLACK") +
+#     ylab('p') + xlab('') + theme_cowplot() + ylim(c(0,1)) +
+#     geom_hline(aes(yintercept=.05), linetype="dashed") +
+#     guides(fill = FALSE, colour = FALSE) +
+#     coord_flip() +           
+#     theme(axis.title.x = element_text(face = "italic"),
+#           axis.text.y = element_blank())
+# }
+
+plt.ps <- function(data, xlims){
   # same as plt.fx.sz but for p values.
-  data %>% filter(measure == "p") %>%
-    ggplot(mapping=aes(x=n, y=value, fill = n, colour = n)) +
-    geom_flat_violin(position = position_nudge(x = .25, y = 0),adjust =2, trim =
-                       TRUE) +
-    geom_boxplot(aes(x = as.numeric(n)+0.25, y = value), outlier.shape = NA,
-                 alpha = 0.3, width = .1, colour = "BLACK") +
-    ylab('p') + xlab('') + theme_cowplot() + ylim(c(0,1)) +
-    geom_hline(aes(yintercept=.05), linetype="dashed") +
+  data %>% filter(measure=="p") %>%
+    ggplot(mapping=aes(x=value, y=n, fill = n, colour = n)) +
+    geom_density_ridges(alpha=0.5) +
+    theme_ridges() +
+    xlab('p') + ylab('N') + theme_cowplot() + xlim(xlims) + 
+    scale_y_discrete(breaks = seq(23, 303, by = 20), labels=as.character(seq(23, 303, by = 20))) +
+    geom_vline(aes(xintercept=.05), linetype="dashed") +
     guides(fill = FALSE, colour = FALSE) +
-    coord_flip() +           
-    theme(axis.title.x = element_text(face = "italic"),
-          axis.text.y = element_blank())
+    ggtitle(data$model[1]) +          
+    theme(axis.title.x = element_text(face = "italic"))
 }
 
-plot.rfx <- function(data, ylims){
-  # plot the estimated variance of the rfx error terms
-  # data has columns n, e*
+# plot.rfx <- function(data, ylims){
+#   # plot the estimated variance of the rfx error terms
+#   # data has columns n, e*
+#   data %>% pivot_longer(names(data)[names(data) != "n"], names_to = "rfx", values_to="var") %>%
+#     ggplot(mapping=aes(x=n, y=var, fill = n, colour = n)) +
+#     geom_flat_violin(position = position_nudge(x = .25, y = 0), adjust =2, trim =
+#                        TRUE) +
+#     geom_boxplot(aes(x = as.numeric(n)+0.25, y = var), outlier.shape = NA,
+#                  alpha = 0.3, width = .1, colour = "BLACK") +
+#     ylab('var') + xlab('N') + theme_cowplot() + ylim(ylims) +
+#     facet_wrap(~rfx) +
+#     guides(fill = FALSE, colour = FALSE) +
+#     coord_flip() +          
+#     theme(axis.title.x = element_text(face = "italic"))
+# }
+
+plt.rfx <- function(data, xlims){
+  # same as plt.fx.sz but for p values.
   data %>% pivot_longer(names(data)[names(data) != "n"], names_to = "rfx", values_to="var") %>%
-    ggplot(mapping=aes(x=n, y=var, fill = n, colour = n)) +
-    geom_flat_violin(position = position_nudge(x = .25, y = 0), adjust =2, trim =
-                       TRUE) +
-    geom_boxplot(aes(x = as.numeric(n)+0.25, y = var), outlier.shape = NA,
-                 alpha = 0.3, width = .1, colour = "BLACK") +
-    ylab('var') + xlab('N') + theme_cowplot() + ylim(ylims) +
+    ggplot(mapping=aes(x=var, y=n, fill = n, colour = n)) +
+    geom_density_ridges(alpha=0.5) +
+    theme_ridges() +
+    xlab(expression(sigma)) + ylab('N') + theme_cowplot() + xlim(xlims) + 
+    scale_y_discrete(breaks = seq(23, 303, by = 20), labels=as.character(seq(23, 303, by = 20))) +
     facet_wrap(~rfx) +
     guides(fill = FALSE, colour = FALSE) +
-    coord_flip() +          
     theme(axis.title.x = element_text(face = "italic"))
 }

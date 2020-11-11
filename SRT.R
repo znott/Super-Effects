@@ -17,9 +17,13 @@ setwd(dirname(rstudioapi::getActiveDocumentContext()$path)) # set working direct
 library(tidyverse) # for data wrangling
 library(wesanderson) # palette for some sweet figure colours
 library(cowplot)
+library(ggridges)
 library(lme4)
 source("efilids_functions.R") # custom functions written for this project
 source("R_rainclouds.R") # functions for plotting
+
+# load this guy if you have it already
+load("SRT_sim_data.RData")
 
 # ----------------------------------------------------------------------------------------------------
 # load data and wrangle into tidy form (see https://r4ds.had.co.nz/tidy-data.html), plus relabel to make
@@ -122,25 +126,25 @@ rm(tmp)
 # ----------------------------------------------------------------------------------------------------
 
 # first for d values
-ylims = c(0,2)
-ffx.d.p <- plt.fx.sz(sims.dat[sims.dat$model == "FFX", ], ylims)
-rfx.d.p <- plt.fx.sz(sims.dat[sims.dat$model == "RFX", ], ylims)
+xlims = c(0,1)
+ffx.d.p <- plt.fx.sz(sims.dat[sims.dat$model == "FFX", ], xlims)
+rfx.d.p <- plt.fx.sz(sims.dat[sims.dat$model == "RFX", ], xlims)
 
 # now for p-values
-ffx.p.p <- plt.ps(sims.dat[sims.dat$model=="FFX",])
-rfx.p.p <- plt.ps(sims.dat[sims.dat$model=="RFX",])
+xlims = c(0,1)
+ffx.p.p <- plt.ps(sims.dat[sims.dat$model=="FFX",], xlims)
+rfx.p.p <- plt.ps(sims.dat[sims.dat$model=="RFX",], c(0, .06))
 
 # use cowplot to make a grid
 p = plot_grid(ffx.d.p, rfx.d.p, ffx.p.p, rfx.p.p, labels=c('A', 'B', 'C', 'D'), label_size = 12, align="v")
 p # print out the plot so you can see it
 p = p + ggsave(plot.fname, width = width, height = height, units="in")
 
-
 # ----------------------------------------------------------------------------------------------------
 # now a raincloud plot of the sources of randomness in the model
 # ----------------------------------------------------------------------------------------------------
 
-rfx.p <- plot.rfx(rfx, c(100, 4000))
+rfx.p <- plt.rfx(rfx, c(100, 4000))
 rfx.p = rfx.p + ggsave(rfx.plot.fname, width = width/2, height = height/2, units="in")
 
 # ----------------------------------------------------------------------------------------------------

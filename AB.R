@@ -24,7 +24,7 @@ source("efilids_functions.R") # custom functions written for this project
 source("R_rainclouds.R") # functions for plotting
 
 #$ load a previous state if you have it
-# load("AB_sim_data.RData")
+#load("AB_sim_data.RData")
 
 # ----------------------------------------------------------------------------------------------------
 # load data and wrangle into tidy form (see https://r4ds.had.co.nz/tidy-data.html), plus relabel to make
@@ -132,8 +132,9 @@ ffx.d.p <- plt.fx.sz(sims.dat[sims.dat$model == "FFX", ], ylims)
 rfx.d.p <- plt.fx.sz(sims.dat[sims.dat$model == "RFX", ], ylims)
 
 # now for p-values
-ffx.p.p <- plt.ps(sims.dat[sims.dat$model=="FFX",])
-rfx.p.p <- plt.ps(sims.dat[sims.dat$model=="RFX",])
+xlims=c(0,1)
+ffx.p.p <- plt.ps(sims.dat[sims.dat$model=="FFX",], xlims)
+rfx.p.p <- plt.ps(sims.dat[sims.dat$model=="RFX",], xlims)
 
 # use cowplot to make a grid
 p = plot_grid(ffx.d.p, rfx.d.p, ffx.p.p, rfx.p.p, labels=c('A', 'B', 'C', 'D'), label_size = 12, align="v")
@@ -144,7 +145,7 @@ p = p + ggsave(plot.fname, width = width, height = height, units="in")
 # now a raincloud plot of the sources of randomness in the model
 # ----------------------------------------------------------------------------------------------------
 
-rfx.p <- plot.rfx(rfx, c(0, .025))
+rfx.p <- plt.rfx(rfx, c(0, .025))
 rfx.p = rfx.p + ggsave(rfx.plot.fname, width = width/2, height = height/2, units="in")
 
 # ----------------------------------------------------------------------------------------------------
