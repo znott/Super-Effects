@@ -61,7 +61,7 @@ rfx.dat <- dat %>% group_by(Subj.No, Block.No.Names) %>%
 # define levels for simulations
 # ----------------------------------------------------------------------------------------------------
 
-sub.Ns = seq(23, 303, by = 10) 
+sub.Ns = round(exp(seq(log(13), log(313), length.out = 20)))
 n.perms =1000# for each sample size, we will repeat our experiment n.perms times
 
 # ----------------------------------------------------------------------------------------------------
@@ -137,7 +137,7 @@ rfx.p.p <- plt.ps(sims.dat[sims.dat$model=="RFX",], c(0, .06))
 
 # use cowplot to make a grid
 p = plot_grid(ffx.d.p, rfx.d.p, ffx.p.p, rfx.p.p, labels=c('A', 'B', 'C', 'D'), label_size = 12, align="v")
-p # print out the plot so you can see it
+# p # print out the plot so you can see it
 p = p + ggsave(plot.fname, width = width, height = height, units="in")
 
 # ----------------------------------------------------------------------------------------------------

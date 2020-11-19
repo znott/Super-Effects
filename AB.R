@@ -20,11 +20,12 @@ library(tidyverse) # for data wrangling
 library(wesanderson) # palette for some sweet figure colours
 library(cowplot)
 library(lme4) # for mixed effects modelling
+library(ggridges)
 source("efilids_functions.R") # custom functions written for this project
 source("R_rainclouds.R") # functions for plotting
 
 #$ load a previous state if you have it
-#load("AB_sim_data.RData")
+load("AB_sim_data.RData")
 
 # ----------------------------------------------------------------------------------------------------
 # load data and wrangle into tidy form (see https://r4ds.had.co.nz/tidy-data.html), plus relabel to make
@@ -61,8 +62,8 @@ rfx.dat <- dat %>% group_by(Subj.No, Task.Order, Experimenter, Trial.Type.Name) 
 # define levels for simulations
 # ----------------------------------------------------------------------------------------------------
 
-sub.Ns = seq(23, 303, by = 10) 
-n.perms =10# for each sample size, we will repeat our experiment n.perms times
+sub.Ns = round(exp(seq(log(13), log(313), length.out = 20)))
+n.perms =1000# for each sample size, we will repeat our experiment n.perms times
 
 # ----------------------------------------------------------------------------------------------------
 # define variables for saving plots
@@ -128,8 +129,8 @@ rm(tmp)
 
 # first for d values
 ylims = c(0,3)
-ffx.d.p <- plt.fx.sz(sims.dat[sims.dat$model == "FFX", ], ylims)
-rfx.d.p <- plt.fx.sz(sims.dat[sims.dat$model == "RFX", ], ylims)
+ffx.d.p <- plt.fx.sz(sims.dat[sims.dat$model == "FFX", ], c(0,2))
+rfx.d.p <- plt.fx.sz(sims.dat[sims.dat$model == "RFX", ], c(1,3))
 
 # now for p-values
 xlims=c(0,1)
@@ -138,7 +139,7 @@ rfx.p.p <- plt.ps(sims.dat[sims.dat$model=="RFX",], xlims)
 
 # use cowplot to make a grid
 p = plot_grid(ffx.d.p, rfx.d.p, ffx.p.p, rfx.p.p, labels=c('A', 'B', 'C', 'D'), label_size = 12, align="v")
-p # print out the plot so you can see it
+#p # print out the plot so you can see it
 p = p + ggsave(plot.fname, width = width, height = height, units="in")
 
 # ----------------------------------------------------------------------------------------------------

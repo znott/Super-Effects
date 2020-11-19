@@ -129,66 +129,75 @@ run.mont.frst.lvl.over.subs <- function(data,N){
   perms
 }
 
-run.scnd.lvl.mc <- function(data, N, k){
-  # this will generate a second level distribution across all subjects for the 
-  # randomly selected N participans
-  # for each N, we generate a distribution of k samples
-  # this will then be drawn from for the prevalence stat/subject size sampling
-  # data = perms, output from run.mont.frst.lvl.over.subs
-  # N = number of samplings 
-  
-  # returns a vector where the 1st column reflects the true minimum accuracy
-  # the remaining elements reflect the minimum stat for the randomly sampled participant values
- 
-  # 1) select N subjects
-  subs = unique(data$sub)
-  tmp <- get.data(data, subs, N)
-  
-  ###########################################################################
-  # 2) Run Minimum statistic prevalence test
-  # My logic here is to follow the prevalence statistic as set out by Allefeld (see https://arxiv.org/pdf/1512.00810.pdf)
-  # using the prevalence null hypothesis (but not the spatially distributed null)
-  # By assessing the gamma at which the null can be rejected (the probability of sampling a given accuracy from the population,
-  # given that accuracy has p = 1-gamma of being from the null, and gamma of not being the null, we can ask to 
-  # what extent we see a prevalance of above chance accuracy in the current population)
-  
-  # set up vector and allocate the true minimum accuracy
-  sl <- rep(NA, times=k)
-  sl[1] <- with(tmp, min(acc[p==1]))
-  # for the remaining values, sample a permuted accuracy from each subject and take the minimum, do this k-1 times
-  perms = matrix(nrow=N, replicate(k-1, sapply(tmp$Subjects[tmp$p==1], function(x) sample(tmp$acc[tmp$Subjects == x & tmp$p!=1],1))), byrow = FALSE)
-  sl[2:length(sl)] <- apply(perms, 2, min)
-  
-  # compute the minimum p-value for the global null hypothesis as defined in equation 24 of https://arxiv.org/pdf/1512.00810.pdf
-  p = (1/k)*sum(sl[1] <= sl)
-  
-  # now use equation 19 to compute Pn
-  gamma_null = seq(0.05, 1, by=.05)
-  pn <- ((1-gamma_null) * p^(1/N) + gamma_null)^N
-  
-  # now compute the largest gamma_0 such that the corresponding null hypothesis can 
-  # still be rejected given alpha (equation 20)
-  alpha = .05
-  if (sum(pn<alpha) > 0){
-    
-      prev=max(gamma_null[pn<alpha])
-      p_prev=pn[pn<alpha]
-      p_prev=p_prev[length(p_prev)]
-      
-  } else {
-    
-    prev = 0
-    p_prev = max(pn)
-    
-  }
-  ###########################################################################
-  # 3) output data
-  sub.data <- data.frame(N=N,
-                         prev=prev,
-                         p=p_prev)
-  sub.data
+get.4.scnd.lvl <- function(data, k, N, sub){
+  # this function extracts data from one participant and 1st level permutation (N)
+  data=data[data$sub == sub & data$p == sample(c(2:N),1),]
+  data$k=k
+  data
 }
 
+run.scnd.lvl.mc <- function(data, k, N){
+  # this will generate a set of second level permutations across all subjects
+  # as defined by https://github.com/allefeld/prevalence-permutation/blob/master/prevalenceCore.m (largely lines 136-157)
+  # procedure goes as:
+  # 1. for neutral perm, select actual subject data
+  # 2. for second level perms, then randomly select a permutation from each subject
+  # 3. store the results
+  
+  # data = the output data from run.mont.frst.lvl.over.subs
+  # k = the number of second level permutations
+  # N = the number of 1st level permutations
+  nsubs = length(unique(data$sub))
+  # for each permutation I take a random selection of non-neutral results (2:N), and select
+  # the data to make a dataframe
+  tmp=do.call(rbind, do.call(rbind, lapply(unique(data$sub), function(x) lapply(c(2:k), get.4.scnd.lvl, data=data, N=N, sub=x))))
+  # then I take the neutral data (original permutation and bind it to the permuted second level data)
+  neut.dat <- data[data$p == 1, ]
+  neut.dat$k <- 1
+  out.data <- rbind(neut.dat, tmp)
+  out.data
+}
+
+prev.test <- function(data, nsubs, alpha){
+  # data = takes the form of out.data from run.scnd.lvl.mc
+  
+  # computes prevalence statistic, given a set of second level permutations (and original scores)
+  # Based on: https://github.com/allefeld/prevalence-permutation/blob/master/prevalenceCore.m - lines 160-168, also
+  # k = the number second level permutation you want to extract from the data
+  # first select the minimum statistic from the neutral permutation
+  neut_m <- min(data$acc[data$k == 1])
+  # now compute the probability of the minimum value (equation 24 of 10.1016/j.neuroimage.2016.07.040)
+  perm_mins <- t(do.call(rbind, lapply(c(1:max(data$k)), function(x) min(data$acc[data$k == x]))))
+  # probability uncorrected of global null (puGN)
+  puGN <- sum(perm_mins >= neut_m)/max(data$k) # this is the uncorrected p value for the global null hypothesis that a == a0
+  # the above gives the statement of existance, next step is to evaluate against the prevalence null
+  # first define prevalence nulls (line 196 or equation 19)
+  null_gammas <- seq(0.01, 1, by = .01)
+  # probability uncorrected of prevalence null
+  puPN <- ((1 - null_gammas) * puGN ^ (1/nsubs) + null_gammas) ^ nsubs
+  sigMN = round(puPN,2) <= alpha
+  # return info in a dataframe
+  if (length(puPN[sigMN]) < 1){
+    gamma_zero <- 0
+  } else {
+    gamma_zero <- max(null_gammas[sigMN])
+  }
+  
+  results <- data.frame(gamma=gamma_zero,
+                        p = puGN)
+  results
+}
+
+run.prev.test <- function(data, N, subs, alpha){
+  # data = the data output by run.scnd.lvl.mc
+  # N = the desired sample size
+  # subs = the list of subjects
+  # alpha = the alpha level against which to assess significance
+  tmp <- get.data(data, subs, N)
+  results <- prev.test(tmp, N, alpha)
+  results$n <- N
+  results
+}
 
 # ----------------------------------------------------------------------------------------------------
 ###### LME and sim functions for SRT data
@@ -484,55 +493,59 @@ run.aov.AB.sim <- function(data, subs, N, dv, fx){
 #     ggplot(mapping=aes(x=n, y=value, fill = n, colour = n)) +
 #     geom_flat_violin(position = position_nudge(x = .25, y = 0),adjust =2, trim =
 #                        TRUE) +
-#     geom_boxplot(aes(x = as.numeric(n)+0.25, y = value), outlier.shape = NA,
-#                  alpha = 0.3, width = .1, colour = "BLACK") +
+#     # geom_boxplot(aes(x = as.numeric(n)+0.25, y = value), outlier.shape = NA,
+#     #              alpha = 0.3, width = .1, colour = "BLACK") +
 #     ylab('d') + xlab('N') + theme_cowplot() + ylim(ylims) +
-#     guides(fill = FALSE, colour = FALSE) +
-#     coord_flip() + ggtitle(data$model[1]) +          
+#     scale_x_discrete(breaks = seq(23, 303, by = 20), labels=as.character(seq(23, 303, by = 20))) +
+#     guides(fill = FALSE, colour = FALSE) + 
+#     coord_flip() + ggtitle(data$model[1]) +
 #     theme(axis.title.x = element_text(face = "italic"))
 # }
-
+# 
 plt.fx.sz <- function(data, ylims){
   # plot effect size, given dataframe of 'n', 'measure', and 'value'
   data %>% filter(measure=="d") %>%
-    ggplot(mapping=aes(x=value, y=n, fill = n, colour = n)) +
-    geom_density_ridges(alpha=0.5) +
+    ggplot(mapping=aes(x=value, y=n, fill=stat(x))) +
+    geom_density_ridges_gradient(scale = 2, rel_min_height = 0.01, gradient_lwd = 1.) +
     theme_ridges() +
+    scale_fill_viridis_c(name = "value", option = "C") +
     xlab('d') + ylab('N') + theme_cowplot() + xlim(ylims) +
-    scale_y_discrete(breaks = seq(23, 303, by = 20), labels=as.character(seq(23, 303, by = 20))) +
+ #   scale_y_discrete(breaks = seq(23, 303, by = 20), labels=as.character(seq(23, 303, by = 20))) +
     guides(fill = FALSE, colour = FALSE) +
-    ggtitle(data$model[1]) +          
+    ggtitle(data$model[1]) +
     theme(axis.title.x = element_text(face = "italic"))
 }
 
 
-# plt.ps <- function(data){
-#   # same as plt.fx.sz but for p values.
-#   data %>% filter(measure == "p") %>%
-#     ggplot(mapping=aes(x=n, y=value, fill = n, colour = n)) +
-#     geom_flat_violin(position = position_nudge(x = .25, y = 0),adjust =2, trim =
-#                        TRUE) +
-#     geom_boxplot(aes(x = as.numeric(n)+0.25, y = value), outlier.shape = NA,
-#                  alpha = 0.3, width = .1, colour = "BLACK") +
-#     ylab('p') + xlab('') + theme_cowplot() + ylim(c(0,1)) +
-#     geom_hline(aes(yintercept=.05), linetype="dashed") +
-#     guides(fill = FALSE, colour = FALSE) +
-#     coord_flip() +           
-#     theme(axis.title.x = element_text(face = "italic"),
-#           axis.text.y = element_blank())
+# plt.ps <- function(data, ylims){
+#    # same as plt.fx.sz but for p values.
+#    data %>% filter(measure == "p") %>%
+#      ggplot(mapping=aes(x=n, y=value, fill = n, colour = n)) +
+#      geom_flat_violin(position = position_nudge(x = .25, y = 0),adjust =2, trim =
+#                         TRUE) +
+# #     geom_boxplot(aes(x = as.numeric(n)+0.25, y = value), outlier.shape = NA,
+# #                  alpha = 0.3, width = .1, colour = "BLACK") +
+#      ylab('p') + xlab('') + theme_cowplot() + ylim(ylims) +
+#      scale_x_discrete(breaks = seq(23, 303, by = 20), labels=as.character(seq(23, 303, by = 20))) +
+#      geom_hline(aes(yintercept=.05), linetype="dashed") +
+#      guides(fill = FALSE, colour = FALSE) +
+#      coord_flip() +
+#      theme(axis.title.x = element_text(face = "italic"),
+#            axis.text.y = element_blank())
 # }
 
 plt.ps <- function(data, xlims){
   # same as plt.fx.sz but for p values.
   data %>% filter(measure=="p") %>%
-    ggplot(mapping=aes(x=value, y=n, fill = n, colour = n)) +
-    geom_density_ridges(alpha=0.5) +
+    ggplot(mapping=aes(x=value, y=n, fill=stat(x))) +
+    geom_density_ridges_gradient(scale = 2, rel_min_height = 0.01, gradient_lwd = 1.) +
     theme_ridges() +
-    xlab('p') + ylab('N') + theme_cowplot() + xlim(xlims) + 
-    scale_y_discrete(breaks = seq(23, 303, by = 20), labels=as.character(seq(23, 303, by = 20))) +
+    scale_fill_viridis_c(name = "value", option = "C") +
+    xlab('p') + ylab('N') + theme_cowplot() + xlim(xlims) +
+#    scale_y_discrete(breaks = seq(23, 303, by = 20), labels=as.character(seq(23, 303, by = 20))) +
     geom_vline(aes(xintercept=.05), linetype="dashed") +
     guides(fill = FALSE, colour = FALSE) +
-    ggtitle(data$model[1]) +          
+    ggtitle(data$model[1]) +
     theme(axis.title.x = element_text(face = "italic"))
 }
 
@@ -555,11 +568,12 @@ plt.ps <- function(data, xlims){
 plt.rfx <- function(data, xlims){
   # same as plt.fx.sz but for p values.
   data %>% pivot_longer(names(data)[names(data) != "n"], names_to = "rfx", values_to="var") %>%
-    ggplot(mapping=aes(x=var, y=n, fill = n, colour = n)) +
-    geom_density_ridges(alpha=0.5) +
+    ggplot(mapping=aes(x=var, y=n, fill=stat(x))) +
+    geom_density_ridges_gradient(scale = 2, rel_min_height = 0.01, gradient_lwd = 1.) +
     theme_ridges() +
+    scale_fill_viridis_c(name = "value", option = "C") +
     xlab(expression(sigma)) + ylab('N') + theme_cowplot() + xlim(xlims) + 
-    scale_y_discrete(breaks = seq(23, 303, by = 20), labels=as.character(seq(23, 303, by = 20))) +
+#    scale_y_discrete(breaks = seq(23, 303, by = 20), labels=as.character(seq(23, 303, by = 20))) +
     facet_wrap(~rfx) +
     guides(fill = FALSE, colour = FALSE) +
     theme(axis.title.x = element_text(face = "italic"))

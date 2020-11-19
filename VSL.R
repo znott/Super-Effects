@@ -52,7 +52,7 @@ prev.dat <- prev.dat %>% mutate(Response = recode(Response,
 # define levels for simulations
 # ----------------------------------------------------------------------------------------------------
 
-sub.Ns = seq(23, 303, by = 10) 
+sub.Ns = round(exp(seq(log(13), log(313), length.out = 20)))
 n.perms =1000# for each sample size, we will repeat our experiment n.perms times
 k = 1000 #for Monte Carlo simulations for prevalence stats
 
@@ -61,7 +61,7 @@ k = 1000 #for Monte Carlo simulations for prevalence stats
 # ----------------------------------------------------------------------------------------------------
 
 plot.fname = "VSL.png"
-width = 5 # in inches
+width = 10 # in inches
 height = 10
 
 # ----------------------------------------------------------------------------------------------------
@@ -89,37 +89,45 @@ sims.dat$measure <- as.factor(sims.dat$measure)
 # ----------------------------------------------------------------------------------------------------
 
 # first get the data from the first level perms
-perm.dat <- run.mont.frst.lvl.over.subs(prev.dat, k)
-prev.res <- replicate(n.perms, lapply(sub.Ns, function(x) run.scnd.lvl.mc(perm.dat, x, k)))
+flvl.perms <- run.mont.frst.lvl.over.subs(prev.dat, k) #P1 in 10.1016/j.neuroimage.2016.07.040 
+slvl.perms <- run.scnd.lvl.mc(flvl.perms, k, k) # P2 in 10.1016/j.neuroimage.2016.07.040 
+# now, over 1000 experiments at each sample size, select the data, and then run the min stat procedure
+prev.res <- replicate(n.perms, lapply(sub.Ns, function(x) run.prev.test(data=slvl.perms, 
+                                                                            subs=subs,
+                                                                            alpha=.05,
+                                                                            N=x)), simplify = FALSE)
+prev.res <- do.call(rbind, do.call(rbind, prev.res))
 # pivot longer and rename as p and d, and then add x-label to the plot below
-prev.out <- do.call(rbind, prev.res) %>% 
-            pivot_longer(c('prev', 'p'), names_to = "measure", values_to="value") %>%
+prev.out <- prev.res %>% 
+            pivot_longer(c('gamma', 'p'), names_to = "measure", values_to="value") %>%
             mutate(measure=recode(measure,
-                                  'prev' = 'd',
+                                  'gamma' = 'd',
                                   'p' = 'p'))
-prev.out$n <- as.factor(prev.out$N)
+prev.out$model = "Prevalence"
+prev.out$n <- as.factor(prev.out$n)
 # ----------------------------------------------------------------------------------------------------
 # plot the outputs separately - then make 4 panels, top row = effect size, bottom row = p, left column = ffx, 
 # right column = rfx
 # ----------------------------------------------------------------------------------------------------
 
 # first for d values
-ylims = c(0,3)
+ylims = c(0, 2)
 sims.dat$model <- "Null=.5"
 ffx.d.p <- plt.fx.sz(sims.dat, ylims)
-prev.d.p <- plt.fx.sz(prev.out, ylims) + xlab("prevalence")
+ylims = c(0, 1)
+prev.d.p <- plt.fx.sz(prev.out, ylims) + xlab(expression(gamma))
 
 # now for p-values
-xlims=c(0,.06)
+xlims=c(0,1)
 ffx.p.p <- plt.ps(sims.dat, xlims)
 prev.p.p <- plt.ps(prev.out, c(0,1))
 
 # use cowplot to make a grid
 p = plot_grid(ffx.d.p, prev.d.p, ffx.p.p, prev.p.p, labels=c('A', 'B', 'C', 'D'), label_size = 12, align="v")
-p # print out the plot so you can see it
+# p # print out the plot so you can see it
 p = p + ggsave(plot.fname, width = width, height = height, units="in")
 
 # ----------------------------------------------------------------------------------------------------
 # save the data of import to an RData file
 # ----------------------------------------------------------------------------------------------------
-save(sims.dat, rfx, file="VS_sim_data.RData")
+save(sims.dat, prev.res, file="VS_sim_data.RData")
