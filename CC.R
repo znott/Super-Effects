@@ -17,6 +17,7 @@ library(tidyverse) # for data wrangling
 library(wesanderson) # palette for some sweet figure colours
 library(cowplot)
 library(lme4)
+library(ggridges)
 source("efilids_functions.R") # custom functions written for this project
 source("R_rainclouds.R") # functions for plotting
 
