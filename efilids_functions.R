@@ -529,11 +529,11 @@ run.stim.lme.4.aov <- function(data, dv){
   # T2int    8 30006 30072 -14995    29990 492.38  1  < 2.2e-16 ***
   # any models with random slopes showed a boundary (singular fit)
   
-  names(data) <- c("sub", "lag", "T1stim", "T2stim", "T1", "T2gT1")  
+  names(data) <- c("sub", "lag", "T1stim", "T1", "T2gT1")  
 
-  mod <- lmer(eval(parse(text=dv)) ~ lag + (1|sub) + (1|T1stim) + (1|T2stim),
+  mod <- lmer(eval(parse(text=dv)) ~ lag + (1|sub) + (1|T1stim),
                 data=data, REML=FALSE)
-  null <- lmer(eval(parse(text=dv)) ~ (1|sub) + (1|T1stim) + (1|T2stim),
+  null <- lmer(eval(parse(text=dv)) ~ (1|sub) + (1|T1stim),
                data=data, REML=FALSE)
   d <- summary(mod)$coefficients["laglag_7","Estimate"]/sqrt(sum(as.data.frame(VarCorr(mod))$sdcor^2)) # get the variance of the random effects
   p <-anova(mod, null)$`Pr(>Chisq)`[2]
@@ -542,7 +542,6 @@ run.stim.lme.4.aov <- function(data, dv){
   df = as.data.frame(VarCorr(mod))
   out$esub = df$sdcor[df$grp=="sub"]^2
   out$T1stim = df$sdcor[df$grp=="T1stim"]^2
-  out$T2stim = df$sdcor[df$grp=="T2stim"]^2  
   out$eRes = df$sdcor[df$grp=="Residual"]^2  
   out$p = p
   out$d = d
@@ -584,7 +583,6 @@ run.aov.AB.sim <- function(data, subs, N, dv, fx){
                      d = tmp$d,
                      eSub = tmp$esub,
                      eT1stim = tmp$T1stim,
-                     eT2stim = tmp$T2stim,
                      eRes = tmp$eRes)
   }
   out
@@ -599,7 +597,7 @@ plt.fx.sz <- function(data, ylims){
   # plot effect size, given dataframe of 'n', 'measure', and 'value'
   data %>% filter(measure=="d") %>%
     ggplot(mapping=aes(x=value, y=n)) + #, fill=stat(x))) +
-    geom_density_ridges(scale=2, rel_min_height=.01, fill=wes_palette("IsleofDogs1")[1], color="white") +
+    geom_density_ridges(scale=2, rel_min_height=.01, fill=wes_palette("IsleofDogs1")[1], color=wes_palette("IsleofDogs1")[5]) +
 #    geom_density_ridges_gradient(scale = 2, rel_min_height = 0.01, gradient_lwd = 1.) +
     theme_ridges() +
 #    scale_fill_viridis_c(name = "value", option = "C") +
@@ -615,10 +613,10 @@ plt.ps <- function(data, xlims){
   # same as plt.fx.sz but for p values.
   data %>% filter(measure=="p") %>%
     ggplot(mapping=aes(x=value, y=n)) + #, fill=stat(x))) +
-    geom_density_ridges(scale=2, rel_min_height=.01, fill=wes_palette("IsleofDogs1")[1], color="white") +
+    geom_density_ridges(scale=2, rel_min_height=.01, fill=wes_palette("IsleofDogs1")[1], color=wes_palette("IsleofDogs1")[5]) +
 #    geom_density_ridges_gradient(scale = 1, rel_min_height = 0.01, gradient_lwd = 1.) +
     theme_ridges() +
-    scale_fill_viridis_c(name = "value", option = "C") +
+#    scale_fill_viridis_c(name = "value", option = "C") +
     xlab('p') + ylab('N') + theme_cowplot() + 
     xlim(xlims) +
 #    scale_y_discrete(breaks = seq(23, 303, by = 20), labels=as.character(seq(23, 303, by = 20))) +
@@ -632,11 +630,12 @@ plt.ps <- function(data, xlims){
 plt.rfx <- function(data, xlims){
   # same as plt.fx.sz but for p values.
   data %>% pivot_longer(names(data)[!names(data) %in% c("n","model")], names_to = "rfx", values_to="var") %>%
+    drop_na() %>%
     ggplot(mapping=aes(x=var, y=n)) + #, fill=stat(x))) +
     geom_density_ridges(scale=2, rel_min_height=.01, fill=wes_palette("IsleofDogs1")[5], color="white") +
     #    geom_density_ridges_gradient(scale = 2, rel_min_height = 0.01, gradient_lwd = 1.) +
     theme_ridges() +
-    scale_fill_viridis_c(name = "value", option = "C") +
+#    scale_fill_viridis_c(name = "value", option = "C") +
     xlab(expression(sigma)) + ylab('N') + theme_cowplot() + xlim(xlims) + 
 #    scale_y_discrete(breaks = seq(23, 303, by = 20), labels=as.character(seq(23, 303, by = 20))) +
     facet_wrap(~model*rfx) +
