@@ -9,7 +9,7 @@ rm(list=ls())
 # ----------------------------------------------------------------------------------------------------
 # load packages and source function files
 # -
-setwd(dirname(rstudioapi::getActiveDocumentContext()$path)) # set working directory to the location of this file
+# setwd(dirname(rstudioapi::getActiveDocumentContext()$path)) # set working directory to the location of this file
 # uncomment the below and run if you need to install the packages
 # install.packages("tidyverse")
 # install.packages("wesanderson")
@@ -39,22 +39,20 @@ dat = read.csv("../total_of_313_subs_SRT_task_trial_level_data.csv", header=TRUE
 min.RT <- 200 # in msec
 sd.crit <- 2.5
 
-ffx.dat <- dat %>% group_by(Subj.No, Block.No.Names) %>%
-              mutate(block = rep(1:4, each=50)) %>%
-              group_by(Subj.No, block, Block.No.Names) %>%
+ffx.dat <- dat %>% filter(Block.No > 2) %>%
+              group_by(Subj.No, Block.No.Names) %>%
               filter(Accuracy == 1) %>%
               filter(RT.ms > min.RT) %>%
               filter(RT.ms < (mean(RT.ms) + sd.crit*sd(RT.ms))) %>%
               summarise(RT=mean(RT.ms))
 
 # now do the same for rfx modelling
-rfx.dat <- dat %>% group_by(Subj.No, Block.No.Names) %>%
-              mutate(block = rep(1:4, each=50)) %>% 
-              group_by(Subj.No, Task.Order, Experimenter, block, Block.No.Names) %>%
-              filter(Accuracy == 1) %>%
-              filter(RT.ms > min.RT) %>%
-              filter(RT.ms < (mean(RT.ms) + sd.crit*sd(RT.ms))) %>%
-              summarise(RT=mean(RT.ms))
+# rfx.dat <- dat %>% filter(Block.No > 2) %>%
+#               group_by(Subj.No, Block.No.Names) %>%
+#               filter(Accuracy == 1) %>%
+#               filter(RT.ms > min.RT) %>%
+#               filter(RT.ms < (mean(RT.ms) + sd.crit*sd(RT.ms))) %>%
+#               summarise(RT=mean(RT.ms))
 
 
 # ----------------------------------------------------------------------------------------------------
@@ -99,26 +97,27 @@ sims.dat$model = "FFX"
 # run simulations for rfx models, getting p values and partial eta squares for ffx, and save results to a list
 # ----------------------------------------------------------------------------------------------------
 
-subs = unique(rfx.dat$Subj.No)
-rfx.sims = replicate(n.perms, lapply(sub.Ns, function(x) run.SRT.sim(data=rfx.dat, 
-                                                                     dv="RT", 
-                                                                     subs=subs,
-                                                                     N=x,
-                                                                     fx="rfx")), simplify = FALSE)
-
-# ----------------------------------------------------------------------------------------------------
-# simplify and add to the sims.dat data.frame
-# ----------------------------------------------------------------------------------------------------
-
-tmp = lapply(seq(1,n.perms,by=1), function(x) do.call(rbind, rfx.sims[[x]]))
-tmp = do.call(rbind, tmp)
-tmp$n <- as.factor(tmp$n)
-rfx = tmp %>% select(n, esub, eRes)
-tmp = tmp %>% select(-c('esub','eRes')) %>% pivot_longer(c('p', 'd'), names_to = "measure", values_to = "value")
-tmp$measure <- as.factor(tmp$measure)
-tmp$model = "RFX"
-sims.dat = rbind(sims.dat, tmp)
-rm(tmp)
+# subs = unique(rfx.dat$Subj.No)
+# rfx.sims = replicate(n.perms, lapply(sub.Ns, function(x) run.SRT.sim(data=rfx.dat, 
+#                                                                      dv="RT", 
+#                                                                      subs=subs,
+#                                                                      N=x,
+#                                                                      fx="rfx")), simplify = FALSE)
+# 
+# # ----------------------------------------------------------------------------------------------------
+# # simplify and add to the sims.dat data.frame
+# # ----------------------------------------------------------------------------------------------------
+# 
+# tmp = lapply(seq(1,n.perms,by=1), function(x) do.call(rbind, rfx.sims[[x]]))
+# tmp = do.call(rbind, tmp)
+# tmp$n <- as.factor(tmp$n)
+# rfx = tmp %>% select(n, esub, eRes)
+# tmp = tmp %>% select(-c('esub','eRes')) %>% pivot_longer(c('p', 'd'), names_to = "measure", values_to = "value")
+# tmp$measure <- as.factor(tmp$measure)
+# tmp$model = "RFX"
+# tmp$fx = "tt"
+# sims.dat = rbind(sims.dat, tmp)
+# rm(tmp)
 
 # ----------------------------------------------------------------------------------------------------
 # plot the outputs separately - then make 4 panels, top row = effect size, bottom row = p, left column = ffx, 
@@ -126,28 +125,20 @@ rm(tmp)
 # ----------------------------------------------------------------------------------------------------
 
 # first for d values
-xlims = c(0,1)
+xlims = c(0,2)
+sims.dat$fx = "tt"
 ffx.d.p <- plt.fx.sz(sims.dat[sims.dat$model == "FFX", ], xlims)
-rfx.d.p <- plt.fx.sz(sims.dat[sims.dat$model == "RFX", ], xlims)
 
 # now for p-values
-xlims = c(0,1)
+xlims = c(0,.06)
 ffx.p.p <- plt.ps(sims.dat[sims.dat$model=="FFX",], xlims)
-rfx.p.p <- plt.ps(sims.dat[sims.dat$model=="RFX",], c(0, .06))
-
 # use cowplot to make a grid
-p = plot_grid(ffx.d.p, rfx.d.p, ffx.p.p, rfx.p.p, labels=c('A', 'B', 'C', 'D'), label_size = 12, align="v")
+p = plot_grid(ffx.d.p, ffx.p.p, labels=c('A', 'B'), label_size = 12, align="v")
 # p # print out the plot so you can see it
-p = p + ggsave(plot.fname, width = width, height = height, units="in")
+p = p + ggsave(plot.fname, width = width/2, height = height, units="in")
 
-# ----------------------------------------------------------------------------------------------------
-# now a raincloud plot of the sources of randomness in the model
-# ----------------------------------------------------------------------------------------------------
-
-rfx.p <- plt.rfx(rfx, c(100, 4000))
-rfx.p = rfx.p + ggsave(rfx.plot.fname, width = width/2, height = height/2, units="in")
 
 # ----------------------------------------------------------------------------------------------------
 # save the data of import to an RData file
 # ----------------------------------------------------------------------------------------------------
-save(sims.dat, rfx, file="SRT_sim_data.RData")
+save(sims.dat, file="SRT_sim_data.RData")

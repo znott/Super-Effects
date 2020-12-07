@@ -50,7 +50,7 @@ get.cohens.d <- function(data, iv, dv, x, y){
   d
 }
 
-run.t.test.sim <- function(data, iv, dv, x, y, subs, N, perm){
+run.t.test.sim <- function(data, iv, dv, x, y, subs, N){
   
   data = get.data(data, subs, N)
   out = data.frame( n    = N,
@@ -210,13 +210,15 @@ run.lme.4.srt <- function(data, dv){
   # which to calculate the recommended d value, 
   # for comparison with the ffx analysis: see https://www.journalofcognition.org/articles/10.5334/joc.10/
   # and https://psycnet-apa-org.ezproxy.library.uq.edu.au/fulltext/2014-32656-001.html
-  names(data) <- c("sub", "task.order", "exp", "block", "trialtype", "RT")  
+  
+  names(data) <- c("sub", "trialtype", "RT")  
+  
   # FOR THE SRT TASK, ALSO FOUND THAT A BOUNDARY (SINGULAR) FIT WHEN INCLUDING RFX OF EXPERIMENTOR AND TASK ORDER
-  mod <- lmer(eval(parse(text=dv)) ~ block*trialtype + (1|sub),
+  mod <- lmer(eval(parse(text=dv)) ~ trialtype + (1|sub),
               data=data, REML=FALSE)
-  null <- lmer(eval(parse(text=dv)) ~ block + (1|sub),
+  null <- lmer(eval(parse(text=dv)) ~ (1|sub),
                data=data, REML=FALSE)
-  d <- abs(summary(mod)$coefficients["block:trialtypeSequence Block","Estimate"])/sqrt(sum(as.data.frame(VarCorr(mod))$sdcor^2)) # get the variance of the random effects
+  d <- abs(summary(mod)$coefficients["trialtypeSequence Block","Estimate"])/sqrt(sum(as.data.frame(VarCorr(mod))$sdcor^2)) # get the variance of the random effects
   p <-anova(mod, null)$`Pr(>Chisq)`[2]
   out = list()
   out$p = p
@@ -229,17 +231,18 @@ run.lme.4.srt <- function(data, dv){
   out
 }
 
-run.SRT.sim <- function(data, subs, N, dv, fx){
+run.SRT.sim <- function(data, subs, N, dv, fx, perm){
   # this function runs the sims for contextual cueing
   # data = conforms to the requirements for get.ps.aov.CC or run.lme.4.cc
-  data = get.data(data, subs, N)
+
   if (fx == "ffx"){
-    tmp = get.ps.aov.CC.SRT(data, dv)
+    tmp = run.t.test.sim(data, "Block.No.Names", dv, "Random Block", "Sequence Block", subs, N)
     tmp$esub = NA
 #    tmp$etask = NA
 #    tmp$eexp = NA
     tmp$eRes = NA
   } else if (fx == "rfx"){
+    data = get.data(data, subs, N)
     tmp = run.lme.4.srt(data, dv)
   }
   out = data.frame( n    = N,
