@@ -267,30 +267,70 @@ get.ps.aov.CC.SRT <- function(data, dv){
   
   names(data) <- c("sub", "block", "trialtype", "RT")
   an <- aov(eval(parse(text=dv)) ~ (block*trialtype)+Error(sub/(block*trialtype)), data = data) # not worried about using type 1 sum of squares because the data are balanced, see https://mcfromnz.wordpress.com/2011/03/02/anova-type-iiiiii-ss-explained/
-  p <- summary(an$`Within`)[[1]][["Pr(>F)"]][3]
+  p <- c(summary(an$`Within`)[[1]][["Pr(>F)"]][2], summary(an$`Within`)[[1]][["Pr(>F)"]][3])
   out = list()
   out$p <- p
   # compute partial eta squared and convert to d (see https://www.journalofcognition.org/articles/10.5334/joc.10/)
-  peta <- summary(an$`Within`)[[1]]["Sum Sq"][3,1]/sum(summary(an$`Within`)[[1]]["Sum Sq"])
+  peta <- c(summary(an$`Within`)[[1]]["Sum Sq"][2,1]/sum(summary(an$`Within`)[[1]]["Sum Sq"]),
+            summary(an$`Within`)[[1]]["Sum Sq"][3,1]/sum(summary(an$`Within`)[[1]]["Sum Sq"]))
+  
   out$d <- sqrt((4*peta)/(1-peta))
   out
 }
 
-run.lme.4.cc <- function(data, dv){
+# run.lme.4.cc <- function(data, dv){
+#   # run a linear mixed effects analysis
+#   # going to take the interaction of block x repeat/novel as the effect from 
+#   # which to calculate the recommended d value, 
+#   # for comparison with the ffx analysis: see https://www.journalofcognition.org/articles/10.5334/joc.10/
+#   # and https://psycnet-apa-org.ezproxy.library.uq.edu.au/fulltext/2014-32656-001.html
+#   names(data) <- c("sub", "task.order", "exp", "block", "trialtype", "RT")  
+#   mod <- lmer(eval(parse(text=dv)) ~ block*trialtype + (1|sub),
+#               data=data, REML=FALSE)
+#   null <- lmer(eval(parse(text=dv)) ~ block + (1|sub),
+#                data=data, REML=FALSE)
+#   d <- abs(summary(mod)$coefficients["block:trialtypeRepeated","Estimate"])/sqrt(sum(as.data.frame(VarCorr(mod))$sdcor^2)) # get the variance of the random effects
+#   p <-anova(mod, null)$`Pr(>Chisq)`[2]
+#   out = list()
+# 
+#   df = as.data.frame(VarCorr(mod))
+#   out$esub = df$sdcor[df$grp=="sub"]^2
+#   # out$eexp = df$sdcor[df$grp=="exp"]^2
+#   # out$etask = df$sdcor[df$grp=="task.order"]^2  
+#   out$eRes = df$sdcor[df$grp=="Residual"]^2  
+#   
+#   out$p = p
+#   out$d = d
+#   out
+# }
+
+run.lme.4.cc <- function(data, dv, fx){
   # run a linear mixed effects analysis
   # going to take the interaction of block x repeat/novel as the effect from 
   # which to calculate the recommended d value, 
   # for comparison with the ffx analysis: see https://www.journalofcognition.org/articles/10.5334/joc.10/
   # and https://psycnet-apa-org.ezproxy.library.uq.edu.au/fulltext/2014-32656-001.html
+  # fx = do you want to test for the interaction (int), or the main effect (me)?
+  
   names(data) <- c("sub", "task.order", "exp", "block", "trialtype", "RT")  
-  mod <- lmer(eval(parse(text=dv)) ~ block*trialtype + (1|sub),
-              data=data, REML=FALSE)
-  null <- lmer(eval(parse(text=dv)) ~ block + (1|sub),
-               data=data, REML=FALSE)
-  d <- abs(summary(mod)$coefficients["block:trialtypeRepeated","Estimate"])/sqrt(sum(as.data.frame(VarCorr(mod))$sdcor^2)) # get the variance of the random effects
-  p <-anova(mod, null)$`Pr(>Chisq)`[2]
+  
+  if (fx == "int"){
+    mod <- lmer(eval(parse(text=dv)) ~ block + trialtype + block:trialtype + (1|sub),
+                data=data, REML=FALSE)
+    null <- lmer(eval(parse(text=dv)) ~ block + trialtype + (1|sub),
+                 data=data, REML=FALSE)
+    d <- abs(summary(mod)$coefficients["block:trialtypeRepeated","Estimate"])/sqrt(sum(as.data.frame(VarCorr(mod))$sdcor^2)) # get the variance of the random effects
+  } else if (fx == "me"){
+    mod <- lmer(eval(parse(text=dv)) ~ block + trialtype + (1|sub),
+                data=data, REML=FALSE)
+    null <- lmer(eval(parse(text=dv)) ~ block + (1|sub),
+                 data=data, REML=FALSE)
+    d <- abs(summary(mod)$coefficients["trialtypeRepeated","Estimate"])/sqrt(sum(as.data.frame(VarCorr(mod))$sdcor^2)) # get the variance of the random effects
+  }
+  
+  p <- anova(mod, null)$`Pr(>Chisq)`[2]
   out = list()
-
+  
   df = as.data.frame(VarCorr(mod))
   out$esub = df$sdcor[df$grp=="sub"]^2
   # out$eexp = df$sdcor[df$grp=="exp"]^2
@@ -302,18 +342,25 @@ run.lme.4.cc <- function(data, dv){
   out
 }
 
-run.aov.CC.sim <- function(data, subs, N, dv, fx){
+
+run.aov.CC.sim <- function(data, subs, N, dv, fx, efx){
 # this function runs the sims for contextual cueing
 # data = conforms to the requirements for get.ps.aov.CC or run.lme.4.cc
+# efx = the effect you want to test for in the CC data 'me' or 'int' 
   data = get.data(data, subs, N)
   if (fx == "ffx"){
-    tmp = get.ps.aov.CC.SRT(data, dv)
+
+        tmp = get.ps.aov.CC.SRT(data, dv)
     tmp$esub = NA
     # tmp$etask = NA
     # tmp$eexp = NA
     tmp$eRes = NA
+    tmp$fx = c("me", "int")
+    
   } else if (fx == "rfx"){
-    tmp = run.lme.4.cc(data, dv)
+    
+    tmp = run.lme.4.cc(data, dv, efx)
+    tmp$fx = paste(efx)
   }
   out = data.frame( n    = N,
                     p    = tmp$p,
@@ -321,7 +368,8 @@ run.aov.CC.sim <- function(data, subs, N, dv, fx){
                     esub = tmp$esub,
                     # etask = tmp$etask,
                     # eexp = tmp$eexp,
-                    eRes = tmp$eRes)
+                    eRes = tmp$eRes,
+                    fx = tmp$fx)
   out
 }
 
@@ -454,6 +502,52 @@ run.lme.4.aov <- function(data, dv){
   out
 }
 
+run.stim.lme.4.aov <- function(data, dv){
+  # run a linear mixed effects analysis
+  # going to take the difference between lag 2 and lag 7 as the effect from 
+  # which to calculate the recommended d value, 
+  # for comparison with the ffx analysis: see https://www.journalofcognition.org/articles/10.5334/joc.10/
+  # and https://psycnet-apa-org.ezproxy.library.uq.edu.au/fulltext/2014-32656-001.html
+  
+  # notes on model comparison and selection
+  # 1. mod: eval(parse(text = dv)) ~ lag + (1 | sub)
+  # T1int: eval(parse(text = dv)) ~ lag + (1 | sub) + (1 | T1stim)
+  # npar   AIC   BIC logLik deviance  Chisq Df Pr(>Chisq)    
+  # mod      6 30714 30764 -15351    30702                         
+  # T1int    7 30496 30554 -15241    30482 219.88  1  < 2.2e-16 ***
+  #   ---
+  #   Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+  # 2/ Models:
+  # T1int: eval(parse(text = dv)) ~ lag + (1 | sub) + (1 | T1stim)
+  # T2int: eval(parse(text = dv)) ~ lag + (1 | sub) + (1 | T1stim) + (1 | 
+  #                                                                     T2int:     T2stim)
+  # npar   AIC   BIC logLik deviance  Chisq Df Pr(>Chisq)    
+  # T1int    7 30496 30554 -15241    30482                         
+  # T2int    8 30006 30072 -14995    29990 492.38  1  < 2.2e-16 ***
+  # any models with random slopes showed a boundary (singular fit)
+  
+  names(data) <- c("sub", "lag", "T1stim", "T2stim", "T1", "T2gT1")  
+
+  mod <- lmer(eval(parse(text=dv)) ~ lag + (1|sub) + (1|T1stim) + (1|T2stim),
+                data=data, REML=FALSE)
+  null <- lmer(eval(parse(text=dv)) ~ (1|sub) + (1|T1stim) + (1|T2stim),
+               data=data, REML=FALSE)
+  d <- summary(mod)$coefficients["laglag_7","Estimate"]/sqrt(sum(as.data.frame(VarCorr(mod))$sdcor^2)) # get the variance of the random effects
+  p <-anova(mod, null)$`Pr(>Chisq)`[2]
+  out = list()
+  
+  df = as.data.frame(VarCorr(mod))
+  out$esub = df$sdcor[df$grp=="sub"]^2
+  out$T1stim = df$sdcor[df$grp=="T1stim"]^2
+  out$T2stim = df$sdcor[df$grp=="T2stim"]^2  
+  out$eRes = df$sdcor[df$grp=="Residual"]^2  
+  out$p = p
+  out$d = d
+  
+  out
+}
+
+
 run.aov.AB.sim <- function(data, subs, N, dv, fx){
   # this function runs the sims using get.ps.aov.AB
   # data = dataframe (see notes of get.ps.aov.AB)
@@ -463,6 +557,7 @@ run.aov.AB.sim <- function(data, subs, N, dv, fx){
   # dv = which DV to analyse (T1 or T2gT1)
   # fx = if ffx run the fixed effects analysis, if rfx, run the rfx analysis
   data = get.data(data, subs, N)
+  if (fx != "stimrfx"){
   if (fx == "ffx"){
     tmp = get.ps.aov.AB(data, dv)
     tmp$esub = NA
@@ -479,6 +574,16 @@ run.aov.AB.sim <- function(data, subs, N, dv, fx){
                     # etask = tmp$etask,
                     # eexp = tmp$eexp,
                     eRes = tmp$eRes)
+  } else {
+    tmp = run.stim.lme.4.aov(data, dv)
+    out = data.frame(n = N,
+                     p = tmp$p,
+                     d = tmp$d,
+                     eSub = tmp$esub,
+                     eT1stim = tmp$T1stim,
+                     eT2stim = tmp$T2stim,
+                     eRes = tmp$eRes)
+  }
   out
 }
 
@@ -487,94 +592,51 @@ run.aov.AB.sim <- function(data, subs, N, dv, fx){
 # Plotting
 # ----------------------------------------------------------------------------------------------------
 
-# plt.fx.sz <- function(data, ylims){
-#   # plot effect size, given dataframe of 'n', 'measure', and 'value'
-#   data %>% filter(measure=="d") %>%
-#     ggplot(mapping=aes(x=n, y=value, fill = n, colour = n)) +
-#     geom_flat_violin(position = position_nudge(x = .25, y = 0),adjust =2, trim =
-#                        TRUE) +
-#     # geom_boxplot(aes(x = as.numeric(n)+0.25, y = value), outlier.shape = NA,
-#     #              alpha = 0.3, width = .1, colour = "BLACK") +
-#     ylab('d') + xlab('N') + theme_cowplot() + ylim(ylims) +
-#     scale_x_discrete(breaks = seq(23, 303, by = 20), labels=as.character(seq(23, 303, by = 20))) +
-#     guides(fill = FALSE, colour = FALSE) + 
-#     coord_flip() + ggtitle(data$model[1]) +
-#     theme(axis.title.x = element_text(face = "italic"))
-# }
-# 
 plt.fx.sz <- function(data, ylims){
   # plot effect size, given dataframe of 'n', 'measure', and 'value'
   data %>% filter(measure=="d") %>%
-    ggplot(mapping=aes(x=value, y=n, fill=stat(x))) +
-    geom_density_ridges_gradient(scale = 2, rel_min_height = 0.01, gradient_lwd = 1.) +
+    ggplot(mapping=aes(x=value, y=n)) + #, fill=stat(x))) +
+    geom_density_ridges(scale=2, rel_min_height=.01, fill=wes_palette("IsleofDogs1")[1], color="white") +
+#    geom_density_ridges_gradient(scale = 2, rel_min_height = 0.01, gradient_lwd = 1.) +
     theme_ridges() +
-    scale_fill_viridis_c(name = "value", option = "C") +
+#    scale_fill_viridis_c(name = "value", option = "C") +
     xlab('d') + ylab('N') + theme_cowplot() + xlim(ylims) +
  #   scale_y_discrete(breaks = seq(23, 303, by = 20), labels=as.character(seq(23, 303, by = 20))) +
     guides(fill = FALSE, colour = FALSE) +
-    ggtitle(data$model[1]) +
+    ggtitle(paste(data$model[1], data$fx[1], sep=" ")) +
     theme(axis.title.x = element_text(face = "italic"))
 }
 
-
-# plt.ps <- function(data, ylims){
-#    # same as plt.fx.sz but for p values.
-#    data %>% filter(measure == "p") %>%
-#      ggplot(mapping=aes(x=n, y=value, fill = n, colour = n)) +
-#      geom_flat_violin(position = position_nudge(x = .25, y = 0),adjust =2, trim =
-#                         TRUE) +
-# #     geom_boxplot(aes(x = as.numeric(n)+0.25, y = value), outlier.shape = NA,
-# #                  alpha = 0.3, width = .1, colour = "BLACK") +
-#      ylab('p') + xlab('') + theme_cowplot() + ylim(ylims) +
-#      scale_x_discrete(breaks = seq(23, 303, by = 20), labels=as.character(seq(23, 303, by = 20))) +
-#      geom_hline(aes(yintercept=.05), linetype="dashed") +
-#      guides(fill = FALSE, colour = FALSE) +
-#      coord_flip() +
-#      theme(axis.title.x = element_text(face = "italic"),
-#            axis.text.y = element_blank())
-# }
 
 plt.ps <- function(data, xlims){
   # same as plt.fx.sz but for p values.
   data %>% filter(measure=="p") %>%
-    ggplot(mapping=aes(x=value, y=n, fill=stat(x))) +
-    geom_density_ridges_gradient(scale = 2, rel_min_height = 0.01, gradient_lwd = 1.) +
+    ggplot(mapping=aes(x=value, y=n)) + #, fill=stat(x))) +
+    geom_density_ridges(scale=2, rel_min_height=.01, fill=wes_palette("IsleofDogs1")[1], color="white") +
+#    geom_density_ridges_gradient(scale = 1, rel_min_height = 0.01, gradient_lwd = 1.) +
     theme_ridges() +
     scale_fill_viridis_c(name = "value", option = "C") +
-    xlab('p') + ylab('N') + theme_cowplot() + xlim(xlims) +
+    xlab('p') + ylab('N') + theme_cowplot() + 
+    xlim(xlims) +
 #    scale_y_discrete(breaks = seq(23, 303, by = 20), labels=as.character(seq(23, 303, by = 20))) +
     geom_vline(aes(xintercept=.05), linetype="dashed") +
     guides(fill = FALSE, colour = FALSE) +
-    ggtitle(data$model[1]) +
+    ggtitle(paste(data$model[1], data$fx[1], sep=" ")) +
     theme(axis.title.x = element_text(face = "italic"))
 }
 
-# plot.rfx <- function(data, ylims){
-#   # plot the estimated variance of the rfx error terms
-#   # data has columns n, e*
-#   data %>% pivot_longer(names(data)[names(data) != "n"], names_to = "rfx", values_to="var") %>%
-#     ggplot(mapping=aes(x=n, y=var, fill = n, colour = n)) +
-#     geom_flat_violin(position = position_nudge(x = .25, y = 0), adjust =2, trim =
-#                        TRUE) +
-#     geom_boxplot(aes(x = as.numeric(n)+0.25, y = var), outlier.shape = NA,
-#                  alpha = 0.3, width = .1, colour = "BLACK") +
-#     ylab('var') + xlab('N') + theme_cowplot() + ylim(ylims) +
-#     facet_wrap(~rfx) +
-#     guides(fill = FALSE, colour = FALSE) +
-#     coord_flip() +          
-#     theme(axis.title.x = element_text(face = "italic"))
-# }
 
 plt.rfx <- function(data, xlims){
   # same as plt.fx.sz but for p values.
-  data %>% pivot_longer(names(data)[names(data) != "n"], names_to = "rfx", values_to="var") %>%
-    ggplot(mapping=aes(x=var, y=n, fill=stat(x))) +
-    geom_density_ridges_gradient(scale = 2, rel_min_height = 0.01, gradient_lwd = 1.) +
+  data %>% pivot_longer(names(data)[!names(data) %in% c("n","model")], names_to = "rfx", values_to="var") %>%
+    ggplot(mapping=aes(x=var, y=n)) + #, fill=stat(x))) +
+    geom_density_ridges(scale=2, rel_min_height=.01, fill=wes_palette("IsleofDogs1")[5], color="white") +
+    #    geom_density_ridges_gradient(scale = 2, rel_min_height = 0.01, gradient_lwd = 1.) +
     theme_ridges() +
     scale_fill_viridis_c(name = "value", option = "C") +
     xlab(expression(sigma)) + ylab('N') + theme_cowplot() + xlim(xlims) + 
 #    scale_y_discrete(breaks = seq(23, 303, by = 20), labels=as.character(seq(23, 303, by = 20))) +
-    facet_wrap(~rfx) +
+    facet_wrap(~model*rfx) +
     guides(fill = FALSE, colour = FALSE) +
     theme(axis.title.x = element_text(face = "italic"))
 }
