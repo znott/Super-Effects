@@ -613,13 +613,10 @@ plt.ps <- function(data, xlims){
   # same as plt.fx.sz but for p values.
   data %>% filter(measure=="p") %>%
     ggplot(mapping=aes(x=value, y=n)) + #, fill=stat(x))) +
-    geom_density_ridges(scale=2, rel_min_height=.01, fill=wes_palette("IsleofDogs1")[1], color=wes_palette("IsleofDogs1")[5]) +
-#    geom_density_ridges_gradient(scale = 1, rel_min_height = 0.01, gradient_lwd = 1.) +
+    geom_density_ridges(scale=2, rel_min_height=.01, fill=wes_palette("IsleofDogs1")[1], color=wes_palette("IsleofDogs1")[4]) +
     theme_ridges() +
-#    scale_fill_viridis_c(name = "value", option = "C") +
     xlab('p') + ylab('N') + theme_cowplot() + 
     xlim(xlims) +
-#    scale_y_discrete(breaks = seq(23, 303, by = 20), labels=as.character(seq(23, 303, by = 20))) +
     geom_vline(aes(xintercept=.05), linetype="dashed") +
     guides(fill = FALSE, colour = FALSE) +
     ggtitle(paste(data$model[1], data$fx[1], sep=" ")) +
@@ -632,7 +629,7 @@ plt.rfx <- function(data, xlims){
   data %>% pivot_longer(names(data)[!names(data) %in% c("n","model")], names_to = "rfx", values_to="var") %>%
     drop_na() %>%
     ggplot(mapping=aes(x=var, y=n)) + #, fill=stat(x))) +
-    geom_density_ridges(scale=2, rel_min_height=.01, fill=wes_palette("IsleofDogs1")[5], color="white") +
+    geom_density_ridges(scale=2, rel_min_height=.01, fill=wes_palette("IsleofDogs1")[5], color=wes_palette("IsleofDogs1")[4]) +
     #    geom_density_ridges_gradient(scale = 2, rel_min_height = 0.01, gradient_lwd = 1.) +
     theme_ridges() +
 #    scale_fill_viridis_c(name = "value", option = "C") +

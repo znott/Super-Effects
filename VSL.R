@@ -8,7 +8,7 @@ rm(list=ls())
 # ----------------------------------------------------------------------------------------------------
 # load packages and source function files
 
-setwd(dirname(rstudioapi::getActiveDocumentContext()$path)) # set working directory to the location of this file
+# setwd(dirname(rstudioapi::getActiveDocumentContext()$path)) # set working directory to the location of this file
 # uncomment the below and run if you need to install the packages
 # install.packages("tidyverse")
 # install.packages("wesanderson")
@@ -20,6 +20,9 @@ library(ggridges)
 source("efilids_functions.R") # custom functions written for this project
 source("R_rainclouds.R") # functions for plotting
 
+# load this guy if you have it already
+# load("VS_sim_data.RData")
+set.seed(42) # testing diff seeds on output
 # ----------------------------------------------------------------------------------------------------
 # load data and wrangle into tidy form (see https://r4ds.had.co.nz/tidy-data.html), plus relabel to make
 # labels a little simpler
@@ -113,8 +116,10 @@ prev.out$n <- as.factor(prev.out$n)
 # first for d values
 ylims = c(0, 2)
 sims.dat$model <- "Null=.5"
+sims.dat$fx <-  "t"
 ffx.d.p <- plt.fx.sz(sims.dat, ylims)
 ylims = c(0, 1)
+prev.out$fx <- "min"
 prev.d.p <- plt.fx.sz(prev.out, ylims) + xlab(expression(gamma))
 
 # now for p-values
