@@ -158,8 +158,14 @@ run.scnd.lvl.mc <- function(data, k, N){
   out.data
 }
 
-prev.test <- function(data, nsubs, alpha){
+prev.test <- function(data, nsubs, alpha, k, N){
   # data = takes the form of out.data from run.scnd.lvl.mc
+  # k = the number of 2nd level perms
+  # N = the number of first level perms
+  data$Subjects <- rep(1:nsubs, each=N) # give each a unique subject identifier
+  data$Subjects <- as.factor(data$Subjects)
+  names(data)[names(data) == "Subjects"] = "sub"
+  data <- run.scnd.lvl.mc(data, k, N)
   
   # computes prevalence statistic, given a set of second level permutations (and original scores)
   # Based on: https://github.com/allefeld/prevalence-permutation/blob/master/prevalenceCore.m - lines 160-168, also
@@ -171,30 +177,39 @@ prev.test <- function(data, nsubs, alpha){
   # probability uncorrected of global null (puGN)
   puGN <- sum(perm_mins >= neut_m)/max(data$k) # this is the uncorrected p value for the global null hypothesis that a == a0
   # the above gives the statement of existance, next step is to evaluate against the prevalence null
-  # first define prevalence nulls (line 196 or equation 19)
-  null_gammas <- seq(0.01, 1, by = .01)
-  # probability uncorrected of prevalence null
-  puPN <- ((1 - null_gammas) * puGN ^ (1/nsubs) + null_gammas) ^ nsubs
-  sigMN = round(puPN,2) <= alpha
-  # return info in a dataframe
-  if (length(puPN[sigMN]) < 1){
-    gamma_zero <- 0
-  } else {
-    gamma_zero <- max(null_gammas[sigMN])
-  }
+  # if this is below alpha, then we would say its significant
+
+  ####### attain upper bound on the gamma null that can be rejected (see equation 20 of 10.1016/j.neuroimage.2016.07.040)
+  gamma_zero = (alpha^(1/nsubs) - puGN^(1/nsubs)) / (1 - puGN^(1/nsubs))
+  if (puGN > alpha) gamma_zero = 0 # not significant so not defined with a prevalence value
+  
+  ####### the below completes step 5a in the algorithm section of 10.1016/j.neuroimage.2016.07.040
+  # # first define prevalence nulls (line 196 or equation 19)
+  # null_gammas <- seq(0.01, 1, by = .01)
+  # # probability uncorrected of prevalence null
+  # puPN <- ((1 - null_gammas) * puGN ^ (1/nsubs) + null_gammas) ^ nsubs
+  # sigMN = round(puPN,2) <= alpha
+  # # return info in a dataframe
+  # if (length(puPN[sigMN]) < 1){
+  #   gamma_zero <- 0
+  # } else {
+  #   gamma_zero <- max(null_gammas[sigMN])
+  # }
   
   results <- data.frame(gamma=gamma_zero,
                         p = puGN)
   results
 }
 
-run.prev.test <- function(data, N, subs, alpha){
-  # data = the data output by run.scnd.lvl.mc
+run.prev.test <- function(data, N, subs, alpha, k, Np){
+  # data = the data output by run.mont.frst.lvl.over.subs
   # N = the desired sample size
   # subs = the list of subjects
   # alpha = the alpha level against which to assess significance
-  tmp <- get.data(data, subs, N)
-  results <- prev.test(tmp, N, alpha)
+  # k = the number of 2nd level perms
+  # Np = the number of 1st level perms
+  tmp <- get.data(data, subs, N) #flvl perms dat
+  results <- prev.test(tmp, N, alpha, k, Np)
   results$n <- N
   results
 }

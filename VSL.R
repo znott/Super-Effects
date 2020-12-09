@@ -21,7 +21,7 @@ source("efilids_functions.R") # custom functions written for this project
 source("R_rainclouds.R") # functions for plotting
 
 # load this guy if you have it already
-# load("VS_sim_data.RData")
+load("VS_sim_data.RData")
 set.seed(42) # testing diff seeds on output
 # ----------------------------------------------------------------------------------------------------
 # load data and wrangle into tidy form (see https://r4ds.had.co.nz/tidy-data.html), plus relabel to make
@@ -57,7 +57,7 @@ prev.dat <- prev.dat %>% mutate(Response = recode(Response,
 
 sub.Ns = round(exp(seq(log(13), log(313), length.out = 20)))
 n.perms =1000# for each sample size, we will repeat our experiment n.perms times
-k = 1000 #for Monte Carlo simulations for prevalence stats
+k = 1000 #for Monte Carlo simulations for prevalence stats (applies to both first level and second level perms)
 
 # ----------------------------------------------------------------------------------------------------
 # define variables for saving plots
@@ -92,13 +92,16 @@ sims.dat$measure <- as.factor(sims.dat$measure)
 # ----------------------------------------------------------------------------------------------------
 
 # first get the data from the first level perms
+n.perms =500# for each sample size, we will repeat our experiment n.perms times - setting to 500 because of the
+# second level perms generated in each iteration
 flvl.perms <- run.mont.frst.lvl.over.subs(prev.dat, k) #P1 in 10.1016/j.neuroimage.2016.07.040 
-slvl.perms <- run.scnd.lvl.mc(flvl.perms, k, k) # P2 in 10.1016/j.neuroimage.2016.07.040 
-# now, over 1000 experiments at each sample size, select the data, and then run the min stat procedure
-prev.res <- replicate(n.perms, lapply(sub.Ns, function(x) run.prev.test(data=slvl.perms, 
+# now, over 100 experiments at each sample size, select the data, and then run the min stat procedure
+prev.res <- replicate(n.perms, lapply(sub.Ns, function(x) run.prev.test(data=flvl.perms, 
                                                                             subs=subs,
                                                                             alpha=.05,
-                                                                            N=x)), simplify = FALSE)
+                                                                            N=x,
+                                                                            k=k,
+                                                                            Np=k)), simplify = FALSE)
 prev.res <- do.call(rbind, do.call(rbind, prev.res))
 # pivot longer and rename as p and d, and then add x-label to the plot below
 prev.out <- prev.res %>% 
