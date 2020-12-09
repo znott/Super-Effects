@@ -414,13 +414,17 @@ get.ps.aov.SD <- function(data, dv){
   out
 }
 
-run.lme.4.SD <- function(data, dv){
+run.lme.4.SD <- function(data, dv, efx){
   # run a linear mixed effects analysis
   # going to take the difference between lag 2 and lag 7 as the effect from 
   # which to calculate the recommended d value, 
   # for comparison with the ffx analysis: see https://www.journalofcognition.org/articles/10.5334/joc.10/
   # and https://psycnet-apa-org.ezproxy.library.uq.edu.au/fulltext/2014-32656-001.html
-  names(data) <- c("sub", "task.order", "exp", "task", "trialtype", "RT")  
+  if (sum(names(data) == "task.stim")==0 ){
+    names(data) <- c("sub", "task", "trialtype", "RT")  
+  } else {
+    names(data) <- c("sub", "task", "trialtype", "stim", "RT")  
+  }
   # NOTE: when I had the following RFX structure (1|sub) + (1|task.order) + (1|exp) the fit was singular, suggesting
   # the RFX structure is too complex for the data - https://stats.stackexchange.com/questions/378939/dealing-with-singular-fit-in-mixed-models
   # therefore am testing the removal of each element of the rfx structure, starting with task.order.
@@ -435,24 +439,34 @@ run.lme.4.SD <- function(data, dv){
   # AIC       BIC    logLik  deviance  df.resid 
   # -132.5054 -114.8529   73.2527 -146.5054        85 
   # FITS still singular with exp, so dropping that also. The remaining model only has a singular fit a small number of times
-
-  mod <- lmer(eval(parse(text=dv)) ~ trialtype*task + (1|sub),
-              data=data, REML=FALSE)
-  null <- lmer(eval(parse(text=dv)) ~ task + (1|sub),
-               data=data, REML=FALSE)
+  if (efx == "sub"){
+    mod <- lmer(eval(parse(text=dv)) ~ trialtype*task + (1|sub),
+                data=data, REML=FALSE)
+    null <- lmer(eval(parse(text=dv)) ~ task + (1|sub),
+                 data=data, REML=FALSE)
+   
+  } else if (efx == "stim"){
+    mod <- lmer(eval(parse(text=dv)) ~ trialtype*task + (1|sub) + (1|stim),
+                data=data, REML=FALSE)
+    null <- lmer(eval(parse(text=dv)) ~ task + (1|sub) + (1|stim),
+                 data=data, REML=FALSE)
+  }
+  
   d <- abs(summary(mod)$coefficients["trialtypesingle","Estimate"])/sqrt(sum(as.data.frame(VarCorr(mod))$sdcor^2)) # get the variance of the random effects
-  p <-anova(mod, null)$`Pr(>Chisq)`[2]
+  p <- anova(mod, null)$`Pr(>Chisq)`[2]
   out = list()
   out$p = p
   out$d = d
   # below is hard coded and clunky - beware! largely done this way because of past decisions!
-  out$esub = (as.data.frame(VarCorr(mod))$sdcor^2)[1]
-  out$eRes = (as.data.frame(VarCorr(mod))$sdcor^2)[2]
+  df = as.data.frame(VarCorr(mod))
+  out$esub = df$sdcor[df$grp=="sub"]^2
+  out$eRes = df$sdcor[df$grp=="Residual"]^2
+  if (efx == "stim") out$estim = df$sdcor[df$grp=="stim"]^2
   #list(out, as.data.frame(VarCorr(mod)))
   out
 }
 
-run.SD.sim <- function(data, subs, N, dv, fx){
+run.SD.sim <- function(data, subs, N, dv, fx, efx){
   # this function runs the sims for SD
   # data = conforms to the requirements for get.ps.aov.SD or run.lme.4.SD
   data = get.data(data, subs, N)
@@ -462,13 +476,14 @@ run.SD.sim <- function(data, subs, N, dv, fx){
     tmp$eexp = NA
     tmp$eRes = NA
   } else if (fx == "rfx"){
-    tmp = run.lme.4.SD(data, dv)
+    tmp = run.lme.4.SD(data, dv, efx)
   }
   out = data.frame( n    = N,
                     p    = tmp$p,
                     d    = tmp$d,
                     esub = tmp$esub,
-                    eRes = tmp$eRes)
+                    eRes = tmp$eRes,
+                    fx   = efx)
   out
 }
 

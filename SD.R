@@ -8,7 +8,7 @@ rm(list=ls())
 # ----------------------------------------------------------------------------------------------------
 # load packages and source function files
 
-setwd(dirname(rstudioapi::getActiveDocumentContext()$path)) # set working directory to the location of this file
+# setwd(dirname(rstudioapi::getActiveDocumentContext()$path)) # set working directory to the location of this file
 # uncomment the below and run if you need to install the packages
 # install.packages("tidyverse")
 # install.packages("wesanderson")
@@ -20,6 +20,9 @@ library(lme4)
 library(ggridges)
 source("efilids_functions.R") # custom functions written for this project
 source("R_rainclouds.R") # functions for plotting
+
+# load this guy if you have it already
+# load("SD_sim_data.RData")
 
 # ----------------------------------------------------------------------------------------------------
 # load data and wrangle into tidy form (see https://r4ds.had.co.nz/tidy-data.html), plus relabel to make
@@ -35,9 +38,9 @@ min.RT <- .200 # in sec
 sd.crit <- 2.5
 
 rfx.dat <- dat %>% filter(Overall.Accuracy == 1) %>%
-                   select(c('Subj.No', 'Task.Order', 'Experimenter', 'Trial.Type.Name', 'Task.1.RT.Sec', 'Task.2.RT.Sec'))  %>%
+                   select(c('Subj.No', 'Trial.Type.Name', 'Task.1.RT.Sec', 'Task.2.RT.Sec', 'Task.1.Response', 'Task.2.Response'))  %>%
                    pivot_longer(c('Task.1.RT.Sec', 'Task.2.RT.Sec'), names_to = "task", values_to="RT") %>%
-                   drop_na() 
+                   drop_na()
 rfx.dat$task[rfx.dat$Trial.Type.Name == 'single_auditory'] = 'sound'
 rfx.dat$task[rfx.dat$Trial.Type.Name == 'single_visual'] = 'vis'
 rfx.dat$task[rfx.dat$Trial.Type.Name == 'dual_task' & rfx.dat$task == 'Task.1.RT.Sec'] = 'vis'
@@ -46,21 +49,26 @@ rfx.dat$task[rfx.dat$Trial.Type.Name == 'dual_task' & rfx.dat$task == 'Task.2.RT
 rfx.dat <- rfx.dat %>% mutate(trialtype = fct_recode(Trial.Type.Name,
                                                                     'single' = 'single_auditory',
                                                                     'single' = 'single_visual',
-                                                                    'dual' = 'dual_task')) %>%
-                       select(-Trial.Type.Name) %>%
-                       group_by(Subj.No, Task.Order, Experimenter, task, trialtype) %>%
+                                                                    'dual' = 'dual_task')) 
+rfx.dat$task.stim <- NA
+rfx.dat$task.stim[rfx.dat$trialtype == "single"] = rfx.dat$Task.1.Response[rfx.dat$trialtype == "single"]
+rfx.dat$task.stim[rfx.dat$trialtype == "dual" & rfx.dat$task == "vis"] = rfx.dat$Task.1.Response[rfx.dat$trialtype == "dual" & rfx.dat$task == "vis"]
+rfx.dat$task.stim[rfx.dat$trialtype == "dual" & rfx.dat$task == "sound"] = rfx.dat$Task.2.Response[rfx.dat$trialtype == "dual" & rfx.dat$task == "sound"]
+
+rfx.dat <- rfx.dat %>% select(-c("Trial.Type.Name", "Task.1.Response", "Task.2.Response")) %>%
+                       group_by(Subj.No, task, trialtype, task.stim) %>%
                        filter(RT > min.RT) %>%
                        filter(RT < (mean(RT)+sd.crit*sd(RT))) %>%
                        summarise(RT = mean(RT))
 
-ffx.dat <- rfx.dat %>% ungroup(Experimenter, Task.Order) %>% select(-c('Task.Order', 'Experimenter'))
+ffx.dat <- rfx.dat %>% ungroup(task.stim) %>% select(-c('task.stim'))
 
 # ----------------------------------------------------------------------------------------------------
 # define levels for simulations
 # ----------------------------------------------------------------------------------------------------
 
 sub.Ns = round(exp(seq(log(13), log(313), length.out = 20)))
-n.perms =1000# for each sample size, we will repeat our experiment n.perms times
+n.perms =10# for each sample size, we will repeat our experiment n.perms times
 
 # ----------------------------------------------------------------------------------------------------
 # define variables for saving plots
@@ -95,15 +103,17 @@ sims.dat$measure <- as.factor(sims.dat$measure)
 sims.dat$model = "FFX"
 
 # ----------------------------------------------------------------------------------------------------
-# run simulations for rfx models, getting p values and partial eta squares for ffx, and save results to a list
+# run simulations for rfx models, getting p values and d for rfx, and save results to a list
 # ----------------------------------------------------------------------------------------------------
 
 subs = unique(rfx.dat$Subj.No)
-rfx.sims = replicate(n.perms, lapply(sub.Ns, function(x) run.SD.sim(data=rfx.dat, 
+tmp.dat <- rfx.dat %>% group_by(Subj.No, task, trialtype) %>% summarise(RT=mean(RT))
+rfx.sims = replicate(n.perms, lapply(sub.Ns, function(x) run.SD.sim(data=tmp.dat, 
                                                                      dv="RT", 
                                                                      subs=subs,
                                                                      N=x,
-                                                                     fx="rfx")), simplify = FALSE)
+                                                                     fx="rfx",
+                                                                     efx='sub')), simplify = FALSE)
 
 # ----------------------------------------------------------------------------------------------------
 # simplify and add to the sims.dat data.frame, make a separate dataframe of the random fx info
@@ -118,6 +128,26 @@ tmp$measure <- as.factor(tmp$measure)
 tmp$model = "RFX"
 sims.dat = rbind(sims.dat, tmp)
 rm(tmp)
+sims.dat$fx = "s vs d"
+
+# ----------------------------------------------------------------------------------------------------
+# run simulations for rfx models that include stimulus as a random factor
+# getting p values and partial eta squares for d, and save results to a list
+# ----------------------------------------------------------------------------------------------------
+
+####### RFX structure of these models too complex for the structute of the data.
+# subs = unique(rfx.dat$Subj.No)
+# # remap responses so they represent stimuli
+# rfx.dat$task.stim[rfx.dat$task == "vis" & rfx.dat$task.stim == "k"] <- "a"
+# rfx.dat$task.stim[rfx.dat$task == "vis" & rfx.dat$task.stim == "l"] <- "s"
+# rfx.dat$task.stim[rfx.dat$task == "sound" & rfx.dat$task.stim == "a"] <- "k"
+# rfx.dat$task.stim[rfx.dat$task == "sound" & rfx.dat$task.stim == "s"] <- "l"
+# rfx.stim.sims = replicate(n.perms, lapply(sub.Ns, function(x) run.SD.sim(data=rfx.dat, 
+#                                                                          dv="RT", 
+#                                                                          subs=subs,
+#                                                                          N=x,
+#                                                                          fx="rfx",
+#                                                                          efx='stim')), simplify = FALSE)
 
 # ----------------------------------------------------------------------------------------------------
 # plot the outputs separately - then make 4 panels, top row = effect size, bottom row = p, left column = ffx, 
@@ -126,12 +156,12 @@ rm(tmp)
 
 # first for d values
 ylims = c(0,3)
-ffx.d.p <- plt.fx.sz(sims.dat[sims.dat$model == "FFX", ], ylims)
-rfx.d.p <- plt.fx.sz(sims.dat[sims.dat$model == "RFX", ], ylims)
+ffx.d.p <- plt.fx.sz(sims.dat[sims.dat$model == "FFX", ], c(0,2))
+rfx.d.p <- plt.fx.sz(sims.dat[sims.dat$model == "RFX", ], c(1,3))
 
 # now for p-values
-ffx.p.p <- plt.ps(sims.dat[sims.dat$model=="FFX",])
-rfx.p.p <- plt.ps(sims.dat[sims.dat$model=="RFX",])
+ffx.p.p <- plt.ps(sims.dat[sims.dat$model=="FFX",], c(0,1))
+rfx.p.p <- plt.ps(sims.dat[sims.dat$model=="RFX",], c(0,1)) + geom_density_ridges() # re-added to remove the trim setting
 
 # use cowplot to make a grid
 p = plot_grid(ffx.d.p, rfx.d.p, ffx.p.p, rfx.p.p, labels=c('A', 'B', 'C', 'D'), label_size = 12, align="v")
@@ -142,12 +172,9 @@ p = p + ggsave(plot.fname, width = width, height = height, units="in")
 # ----------------------------------------------------------------------------------------------------
 # now a raincloud plot of the sources of randomness in the model
 # ----------------------------------------------------------------------------------------------------
-
-rfx$esub = rfx$esub*1000 # putting in ms
-rfx$eRes = rfx$eRes*1000
-rfx.p <- plot.rfx(rfx, c(0, 25))
+rfx$model <-"RFX"
+rfx.p <- plt.rfx(rfx, c(0, .05))
 rfx.p = rfx.p + ggsave(rfx.plot.fname, width = width/2, height = height/2, units="in")
-
 
 # ----------------------------------------------------------------------------------------------------
 # save the data of import to an RData file
