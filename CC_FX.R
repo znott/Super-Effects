@@ -16,15 +16,20 @@ setwd(dirname(rstudioapi::getActiveDocumentContext()$path)) # set working direct
 library(tidyverse) # for data wrangling
 library(wesanderson) # palette for some sweet figure colours
 library(cowplot)
+library(lme4)
+source("efilids_functions.R") # custom functions written for this project
+source("R_rainclouds.R") # functions for plotting
 
-# load data and wrangle into tidy form (see https://r4ds.had.co.nz/tidy-data.html), plus relabel to make
-# labels a little simpler
+
+# ----------------------------------------------------------------------------------------------------
+# load data and wrangle 
+# ----------------------------------------------------------------------------------------------------
 dat = read.csv("../total_of_313_subs_CC_task_trial_level_data.csv", header=TRUE)
 
 
 ##### RT_ms: Trial Type x Task Order
 ##### --------------------------------------------------------
-task.order.cc <- dat %>% group_by(Task.Order, Block.No, Trial.Type) %>% 
+task.order.cc <- dat %>% group_by(Subj.No, Task.Order, Block.No, Trial.Type) %>% 
                                   filter(RT.ms>.2) %>%
                                   filter(RT.ms < (mean(RT.ms) + 2.5*sd(RT.ms))) %>%
                                   summarise(mean=mean(RT.ms))

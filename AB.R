@@ -25,7 +25,7 @@ source("efilids_functions.R") # custom functions written for this project
 source("R_rainclouds.R") # functions for plotting
 
 #$ load a previous state if you have it
-# load("AB_sim_data.RData")
+load("AB_sim_data.RData")
 
 # ----------------------------------------------------------------------------------------------------
 # load data and wrangle into tidy form (see https://r4ds.had.co.nz/tidy-data.html), plus relabel to make
@@ -171,8 +171,8 @@ rfx.stim.d.p <- plt.fx.sz(sims.dat[sims.dat$model == "RFX" & sims.dat$fx == "sti
 # now for p-values
 xlims=c(0,0.4)
 ffx.p.p <- plt.ps(sims.dat[sims.dat$model=="FFX",], xlims)
-rfxsub.p.p <- plt.ps(sims.dat[sims.dat$model=="RFX" & sims.dat$fx == "sub",], c(0, .4))
-rfxstim.p.p <- plt.ps(sims.dat[sims.dat$model=="RFX" & sims.dat$fx == "stim",], c(0, .4))
+rfxsub.p.p <- plt.ps(sims.dat[sims.dat$model=="RFX" & sims.dat$fx == "sub",], c(0, .4)) + geom_density_ridges()
+rfxstim.p.p <- plt.ps(sims.dat[sims.dat$model=="RFX" & sims.dat$fx == "stim",], c(0, .1))
 
 # use cowplot to make a grid
 
@@ -186,7 +186,7 @@ p = p + ggsave(plot.fname, width = width, height = height, units="in")
 
 rfx$model <- NULL
 names(rfx)[names(rfx) == "rfx"] = "model"
-rfx.p <- plt.rfx(rfx, c(0, 0.2))
+rfx.p <- plt.rfx(rfx, c(0, 0.2)) + facet_wrap(~model*rfx, ncol=2)
 rfx.p = rfx.p + ggsave(rfx.plot.fname, width = width/2, height = height/2, units="in")
 
 # ----------------------------------------------------------------------------------------------------

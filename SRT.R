@@ -125,12 +125,12 @@ sims.dat$model = "FFX"
 # ----------------------------------------------------------------------------------------------------
 
 # first for d values
-xlims = c(0,2)
+xlims = c(0,0.5)
 sims.dat$fx = "tt"
 ffx.d.p <- plt.fx.sz(sims.dat[sims.dat$model == "FFX", ], xlims)
 
 # now for p-values
-xlims = c(0,.06)
+xlims = c(0,1)
 ffx.p.p <- plt.ps(sims.dat[sims.dat$model=="FFX",], xlims)
 # use cowplot to make a grid
 p = plot_grid(ffx.d.p, ffx.p.p, labels=c('A', 'B'), label_size = 12, align="v")

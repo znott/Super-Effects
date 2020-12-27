@@ -18,6 +18,7 @@ library(wesanderson) # palette for some sweet figure colours
 library(cowplot)
 library(lme4)
 library(ggridges)
+library(car)
 source("efilids_functions.R") # custom functions written for this project
 source("R_rainclouds.R") # functions for plotting
 
@@ -37,18 +38,15 @@ dat = read.csv("../total_of_313_subs_CC_task_trial_level_data.csv", header=TRUE)
 min.RT <- 200 # in msec
 sd.crit <- 2.5
 
-ffx.dat <- dat %>% mutate(Block.No = rep(c(1:4), each = 3*24, length(unique(dat$Subj.No)))) %>%
-            filter(!Block.No %in% c(2,3)) %>%
+ffx.dat <- dat %>% mutate(Block.No = rep(c(1:12), each = 24, length(unique(dat$Subj.No)))) %>%
             group_by(Subj.No, Block.No, Trial.Type.Name) %>%
             filter(Accuracy == 1) %>%
             filter(RT.ms > min.RT) %>%
             filter(RT.ms < (mean(RT.ms) + sd.crit*sd(RT.ms))) %>%
             summarise(RT=mean(RT.ms))
 
-
 # now do the same for rfx modelling
-rfx.dat <- dat %>% mutate(Block.No = rep(c(1:4), each = 3*24, length(unique(dat$Subj.No)))) %>%
-            filter(!Block.No %in% c(2,3)) %>%
+rfx.dat <- dat %>% mutate(Block.No = rep(c(1:12), each = 24, length(unique(dat$Subj.No)))) %>%
             group_by(Subj.No, Task.Order, Experimenter, Block.No, Trial.Type.Name) %>%
             filter(Accuracy == 1) %>%
             filter(RT.ms > min.RT) %>%
@@ -170,7 +168,7 @@ dp = plot_grid(ffxme.d.p, ffxint.d.p, rfxint.d.p, rfxme.d.p, labels=c('A', 'B', 
 # # print out the plot so you can see it
 dp = dp + ggsave(paste(plot.fname, "d.png", sep="_"), width = width, height = height, units="in")
 
-pp = plot_grid(ffxme.p.p, ffxint.p.p, rfxint.p.p, rfxme.d.p, labels=c('A', 'B', 'C', 'D'), label_size = 12, align="v")
+pp = plot_grid(ffxme.p.p, ffxint.p.p, rfxint.p.p, rfxme.p.p, labels=c('A', 'B', 'C', 'D'), label_size = 12, align="v")
 pp = pp + ggsave(paste(plot.fname, "p.png", sep="_"), width = width, height = height, units="in")
 
 # ----------------------------------------------------------------------------------------------------

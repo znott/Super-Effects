@@ -285,6 +285,7 @@ get.ps.aov.CC.SRT <- function(data, dv){
   
   names(data) <- c("sub", "block", "trialtype", "RT")
   an <- aov(eval(parse(text=dv)) ~ (block*trialtype)+Error(sub/(block*trialtype)), data = data) # not worried about using type 1 sum of squares because the data are balanced, see https://mcfromnz.wordpress.com/2011/03/02/anova-type-iiiiii-ss-explained/
+  an <- Anova(lm(RT ~ block * trialtype, data=data, contrasts=list(topic=contr.sum, sys=contr.sum)), type=3)
   p <- c(summary(an$`Within`)[[1]][["Pr(>F)"]][2], summary(an$`Within`)[[1]][["Pr(>F)"]][3])
   out = list()
   out$p <- p
