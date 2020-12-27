@@ -284,15 +284,18 @@ get.ps.aov.CC.SRT <- function(data, dv){
   # NOTE: This also works for SRT data
   
   names(data) <- c("sub", "block", "trialtype", "RT")
-  an <- aov(eval(parse(text=dv)) ~ (block*trialtype)+Error(sub/(block*trialtype)), data = data) # not worried about using type 1 sum of squares because the data are balanced, see https://mcfromnz.wordpress.com/2011/03/02/anova-type-iiiiii-ss-explained/
+  #an <- aov(eval(parse(text=dv)) ~ (block*trialtype)+Error(sub/(block*trialtype)), data = data) # not worried about using type 1 sum of squares because the data are balanced, see https://mcfromnz.wordpress.com/2011/03/02/anova-type-iiiiii-ss-explained/
+  # comparisons between ours and ss3 outputs revealed the above comment to not be true, therefore using Anova from car package
   an <- Anova(lm(RT ~ block * trialtype, data=data, contrasts=list(topic=contr.sum, sys=contr.sum)), type=3)
-  p <- c(summary(an$`Within`)[[1]][["Pr(>F)"]][2], summary(an$`Within`)[[1]][["Pr(>F)"]][3])
+  p <- an$`Pr(>F)`[which(rownames(an) == "block:trialtype")]
   out = list()
   out$p <- p
-  # compute partial eta squared and convert to d (see https://www.journalofcognition.org/articles/10.5334/joc.10/)
-  peta <- c(summary(an$`Within`)[[1]]["Sum Sq"][2,1]/sum(summary(an$`Within`)[[1]]["Sum Sq"]),
-            summary(an$`Within`)[[1]]["Sum Sq"][3,1]/sum(summary(an$`Within`)[[1]]["Sum Sq"]))
-  
+  # compute partial eta squared: https://www.frontiersin.org/articles/10.3389/fpsyg.2013.00863/full equation 12
+  # and convert to d (see https://www.journalofcognition.org/articles/10.5334/joc.10/)
+  # peta <- c(summary(an$`Within`)[[1]]["Sum Sq"][2,1]/sum(summary(an$`Within`)[[1]]["Sum Sq"]),
+  #           summary(an$`Within`)[[1]]["Sum Sq"][3,1]/sum(summary(an$`Within`)[[1]]["Sum Sq"]))
+  peta <-  an$`Sum Sq`[which(rownames(an) == "block:trialtype")]/sum(an$`Sum Sq`[which(rownames(an) == "block:trialtype")],
+                                                                     an$`Sum Sq`[which(rownames(an) == "Residuals")])
   out$d <- sqrt((4*peta)/(1-peta))
   out
 }
@@ -374,7 +377,7 @@ run.aov.CC.sim <- function(data, subs, N, dv, fx, efx){
     # tmp$etask = NA
     # tmp$eexp = NA
     tmp$eRes = NA
-    tmp$fx = c("me", "int")
+    tmp$fx = "blk:tt"
     
   } else if (fx == "rfx"){
     
@@ -405,12 +408,15 @@ get.ps.aov.SD <- function(data, dv){
   # NOTE: This also works for SRT data
   
   names(data) <- c("sub", "task", "trialtype", "RT")
-  an <- aov(eval(parse(text=dv)) ~ (task*trialtype)+Error(sub/(task*trialtype)), data = data) # not worried about using type 1 sum of squares because the data are balanced, see https://mcfromnz.wordpress.com/2011/03/02/anova-type-iiiiii-ss-explained/
-  p <- summary(an$`Within`)[[1]][["Pr(>F)"]][2] # we care about main effect of trial type
+  #an <- aov(eval(parse(text=dv)) ~ (task*trialtype)+Error(sub/(task*trialtype)), data = data) # not worried about using type 1 sum of squares because the data are balanced, see https://mcfromnz.wordpress.com/2011/03/02/anova-type-iiiiii-ss-explained/
+  an <- Anova(lm(RT ~ task * trialtype, data=data, contrasts=list(topic=contr.sum, sys=contr.sum)), type=3)
+  p <- an$`Pr(>F)`[which(rownames(an) == "trialtype")]
+  #p <- summary(an$`Within`)[[1]][["Pr(>F)"]][2] # we care about main effect of trial type
   out = list()
   out$p <- p
   # compute partial eta squared and convert to d (see https://www.journalofcognition.org/articles/10.5334/joc.10/)
-  peta <- summary(an$`Within`)[[1]]["Sum Sq"][2,1]/sum(summary(an$`Within`)[[1]]["Sum Sq"])
+  peta <-  an$`Sum Sq`[which(rownames(an) == "trialtype")]/sum(an$`Sum Sq`[which(rownames(an) == "trialtype")],
+                                                               an$`Sum Sq`[which(rownames(an) == "Residuals")])
   out$d <- sqrt((4*peta)/(1-peta))
   out
 }
@@ -500,12 +506,17 @@ get.ps.aov.AB <- function(data, dv){
   # dv = name of dv (T1 or T2gT1)
   
   names(data) <- c("sub", "lag", "T1", "T2gT1")
-  an <- aov(eval(parse(text=dv)) ~ (lag)+Error(sub/(lag)), data = data) # not worried about using type 1 sum of squares because the data are balanced, see https://mcfromnz.wordpress.com/2011/03/02/anova-type-iiiiii-ss-explained/
-  p <- summary(an$`Within`)[[1]][["Pr(>F)"]][1]
+#  an <- aov(eval(parse(text=dv)) ~ (lag)+Error(sub/(lag)), data = data) # not worried about using type 1 sum of squares because the data are balanced, see https://mcfromnz.wordpress.com/2011/03/02/anova-type-iiiiii-ss-explained/
+  an <- Anova(lm(eval(parse(text=dv)) ~ lag, data=data, contrasts=list(topic=contr.sum, sys=contr.sum)), type=3)
+  p <- an$`Pr(>F)`[which(rownames(an) == "lag")]
+#  p <- summary(an$`Within`)[[1]][["Pr(>F)"]][1]
   out = list()
   out$p <- p
   # compute partial eta squared and convert to d (see https://www.journalofcognition.org/articles/10.5334/joc.10/)
-  peta <- summary(an$`Within`)[[1]]["Sum Sq"][1,1]/sum(summary(an$`Within`)[[1]]["Sum Sq"])
+  # is actually eta squared in this case
+  #peta <- summary(an$`Within`)[[1]]["Sum Sq"][1,1]/sum(summary(an$`Within`)[[1]]["Sum Sq"])
+  peta <-  an$`Sum Sq`[which(rownames(an) == "lag")]/sum(an$`Sum Sq`[which(rownames(an) == "lag")],
+                                                         an$`Sum Sq`[which(rownames(an) == "Residuals")])
   out$d <- sqrt((4*peta)/(1-peta))
   out
 }

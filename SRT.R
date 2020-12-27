@@ -97,13 +97,13 @@ sims.dat$model = "FFX"
 # run simulations for rfx models, getting p values and partial eta squares for ffx, and save results to a list
 # ----------------------------------------------------------------------------------------------------
 
-# subs = unique(rfx.dat$Subj.No)
-# rfx.sims = replicate(n.perms, lapply(sub.Ns, function(x) run.SRT.sim(data=rfx.dat, 
-#                                                                      dv="RT", 
-#                                                                      subs=subs,
-#                                                                      N=x,
-#                                                                      fx="rfx")), simplify = FALSE)
-# 
+subs = unique(rfx.dat$Subj.No)
+rfx.sims = replicate(n.perms, lapply(sub.Ns, function(x) run.SRT.sim(data=rfx.dat,
+                                                                     dv="RT",
+                                                                     subs=subs,
+                                                                     N=x,
+                                                                     fx="rfx")), simplify = FALSE)
+
 # # ----------------------------------------------------------------------------------------------------
 # # simplify and add to the sims.dat data.frame
 # # ----------------------------------------------------------------------------------------------------

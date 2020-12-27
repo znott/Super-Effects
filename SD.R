@@ -18,6 +18,7 @@ library(wesanderson) # palette for some sweet figure colours
 library(cowplot)
 library(lme4)
 library(ggridges)
+library(car)
 source("efilids_functions.R") # custom functions written for this project
 source("R_rainclouds.R") # functions for plotting
 
@@ -68,7 +69,7 @@ ffx.dat <- rfx.dat %>% ungroup(task.stim) %>% select(-c('task.stim'))
 # ----------------------------------------------------------------------------------------------------
 
 sub.Ns = round(exp(seq(log(13), log(313), length.out = 20)))
-n.perms =10# for each sample size, we will repeat our experiment n.perms times
+n.perms =1000# for each sample size, we will repeat our experiment n.perms times
 
 # ----------------------------------------------------------------------------------------------------
 # define variables for saving plots
@@ -88,7 +89,8 @@ sims = replicate(n.perms, lapply(sub.Ns, function(x) run.SD.sim(data=ffx.dat,
                                                                      dv="RT",
                                                                      subs=subs,
                                                                      N=x,
-                                                                     fx='ffx')), simplify = FALSE)
+                                                                     fx='ffx',
+                                                                     efx=NA)), simplify = FALSE)
 
 # ----------------------------------------------------------------------------------------------------
 # simplify the sims output to a dataframe and do a little wrangling to neaten it up

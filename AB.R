@@ -21,6 +21,7 @@ library(wesanderson) # palette for some sweet figure colours
 library(cowplot)
 library(lme4) # for mixed effects modelling
 library(ggridges)
+library(car)
 source("efilids_functions.R") # custom functions written for this project
 source("R_rainclouds.R") # functions for plotting
 
@@ -103,6 +104,7 @@ sims.dat = sims.dat %>% pivot_longer(c('p', 'd'), names_to = "measure", values_t
 sims.dat$measure <- as.factor(sims.dat$measure)
 sims.dat$model = "FFX"
 sims.dat$rfx = "na"
+
 # ----------------------------------------------------------------------------------------------------
 # run simulations for rfx models, getting p values and partial eta squares for ffx, and save results to a list
 # ----------------------------------------------------------------------------------------------------
@@ -172,7 +174,7 @@ rfx.stim.d.p <- plt.fx.sz(sims.dat[sims.dat$model == "RFX" & sims.dat$fx == "sti
 xlims=c(0,0.4)
 ffx.p.p <- plt.ps(sims.dat[sims.dat$model=="FFX",], xlims)
 rfxsub.p.p <- plt.ps(sims.dat[sims.dat$model=="RFX" & sims.dat$fx == "sub",], c(0, .4)) + geom_density_ridges()
-rfxstim.p.p <- plt.ps(sims.dat[sims.dat$model=="RFX" & sims.dat$fx == "stim",], c(0, .1))
+rfxstim.p.p <- plt.ps(sims.dat[sims.dat$model=="RFX" & sims.dat$fx == "stim",], c(0, .4))
 
 # use cowplot to make a grid
 
