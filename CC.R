@@ -23,7 +23,7 @@ source("efilids_functions.R") # custom functions written for this project
 source("R_rainclouds.R") # functions for plotting
 
 #$ load a previous state if you have it
-#load("CC_sim_data.RData")
+load("CC_sim_data.RData")
 
 # ----------------------------------------------------------------------------------------------------
 # load data and wrangle into tidy form (see https://r4ds.had.co.nz/tidy-data.html), plus relabel to make
