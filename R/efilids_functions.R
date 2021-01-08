@@ -646,25 +646,28 @@ plt.fx.sz <- function(data, ylims){
     xlab('d') + ylab('N') + theme_cowplot() + xlim(ylims) +
  #   scale_y_discrete(breaks = seq(23, 303, by = 20), labels=as.character(seq(23, 303, by = 20))) +
     guides(fill = FALSE, colour = FALSE) +
-    ggtitle(paste(data$model[1], data$fx[1], sep=" ")) +
+    ggtitle(paste(data$model[1])) +
     theme(axis.title.x = element_text(face = "italic"))
 }
 
 
-plt.ps <- function(data, xlims){
+plt.ps <- function(data, xlims, rel_min_height){
   # same as plt.fx.sz but for p values.
   data %>% filter(measure=="p") %>%
     ggplot(mapping=aes(x=value, y=n)) + #, fill=stat(x))) +
-    geom_density_ridges(scale=2, rel_min_height=.01, fill=wes_palette("IsleofDogs1")[1], color=wes_palette("IsleofDogs1")[4]) +
+    geom_density_ridges(scale=2, rel_min_height=rel_min_height, fill=wes_palette("IsleofDogs1")[1], color=wes_palette("IsleofDogs1")[5]) + # 
     theme_ridges() +
-    xlab('p') + ylab('N') + theme_cowplot() + 
-    xlim(xlims) +
-    geom_vline(aes(xintercept=.05), linetype="dashed") +
+    xlab('p') + ylab('N') + theme_cowplot() + xlim(xlims) +
+    geom_vline(aes(xintercept=log(.05)), linetype="dashed") +
     guides(fill = FALSE, colour = FALSE) +
-    ggtitle(paste(data$model[1], data$fx[1], sep=" ")) +
+    ggtitle(paste(data$model[1])) +
     theme(axis.title.x = element_text(face = "italic"))
 }
 
+
+RmType <- function(string) { # remove 1st label from facet_wrap
+  sub("._", "", string)
+}
 
 plt.rfx <- function(data, xlims){
   # same as plt.fx.sz but for p values.
