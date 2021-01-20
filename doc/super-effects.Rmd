@@ -56,8 +56,8 @@ library(tidyverse)
 library(wesanderson)
 library(ggridges)
 library(cowplot)
-source('../R/efilids_functions.R')
-source('../R/R_rainclouds.R')
+source('R/efilids_functions.R')
+source('R/R_rainclouds.R')
 ```
 
 **Running headline**: Environment and species richness
@@ -77,12 +77,34 @@ Here is the second paragraph of the introduction.
 
 ### Participants
 
+The current study utilises a dataset previously collected in the lab for a previous [pre-registered](https://osf.io/nxysg) project examining the relationship between executive function and individual differences. This dataset consists of performance measures from 313 participants. Participants were undergraduate students, aged 18 to 35 years old (mean = 20.14 yrs, sd = 3.46). Of the total sample, 208 reported being of female sex, and 269 reported being right handed. Participants received course credits as compensation. All procedures were approved by the University of Queensland Human Reseach Ethics Committee and adhered to the [National Statement on Ethical Conduct in Human Research](https://www.nhmrc.gov.au/about-us/publications/national-statement-ethical-conduct-human-research-2007-updated-2018).
+
 
 ### Apparatus
 
+Experimental procedures were run on an Apple Mac Minicomputer (OS X [which version]) with custom code using the Psychophysics toolbox [@brainardPsychophysicsToolbox1997a; @pelliVideoToolboxSoftwareVisual1997a] in Matlab v2015b. Participants completed 5 tasks; Attentional Blink (AB), Dual Task (DT), Contextual Cueing (CC), Serial Response Task (SRT), and Visual Statistical Learning (VSL). Task order was randomised for each participant, apart from the VSL task, which was presented last. This was because the recognition component of the task may have allowed participants to infer that other tasks were also assessing implicit learning. 
 
 ### Task Procedures
 
+**How far were participants sat from the monitor?**
+
+#### Attentional Blink (AB)
+
+The AB protocol was the same as that reported in [@benderRelationshipResponseSelection2016]. Each trial began with a black fixation cross presented in the center of a gray screen [RGB: 128, 128, 128] for a variable interval of 200-600 ms. On each trial, letters targets and digit distracters were each presented centrally for 100 ms in rapid serial presentation. The eight distractors were drawn without replacement from the digits 2-9. The target letters were randomly selected from the English alphabet, excluding I, L, O, Q, U, V and X. The first target (T1) was the third item to be presented (serial position 3), and T2 was presented at either lag 2 (200 ms), 3 (300 ms), 5 (500 ms) or 7 (700 ms) relative to T1. Participants were instructed to make an unspeeded report of each target at the end of the trial. Participants completed 24 practice trials and four test blocks of 24 trials. For the simulation analysis we calculated T2 accuracy, given that T1 was accurately reported (T2|T1), for each lag. **what was the visual angle of the stimuli?**
+
+#### Dual Task (DT)
+
+The DT protocol was previously reported in [@benderRelationshipResponseSelection2016]. Each trial began with a black fixation cross presented in the center of a gray screen [RGB: 128, 128, 128] for a variable interval of 200-600 ms. Next either one of two possible coloured circles [red, RGB: 237, 32, 36 or blue, RGB: 44, 71, 151] or one of two possible sounds (complex tones taken from [@duxIsolationCentralBottleneck2006]), or both a circle and a sound were presented for 200 ms. Participants were instructed to respond to all presented tasks by using the appropriate key press ['A' or 'S' for left hand responses, 'J' or 'K' for right hand responses, task-hand mapping was counterbalanced across participants]. The DT consisted of 4 blocks of 36 trials, with each trial type (S visual, S auditory or DT) randomly mixed within blocks. Participants completed the DT task after completing two S blocks as practice, one for the visual task and one for the auditory task. **visual angle of stimuli?** Response Times (RTs) to each task modality x condition were taken as the measures of interest.
+
+#### Contextual Cueing (CC)
+
+The CC protocol was the same as reported by [@nydamCathodalElectricalStimulation2018]. Each trial began with a white fixation cross presented on a grey screen [RGB: 80, 80, 80. An array of 12 L's and a single T were then presented presented within an invisible 15 x 15 grid that subtended 10$^\circ$ x 10$^\circ$ of visual angle. Orientation of each L was determined randomly to be rotated 0$^\circ$, 90$^\circ$, 180$^\circ$ or 270$^\circ$ clockwise. The T was oriented to either 90$^\circ$ or 270$^\circ$. Participants reported whether the T was oriented to the left (using the 'z' key) or the right (using the 'm' key). The task consisted of 12 blocks of 24 trials. For half the trials in each block, the display was taken (without replacement) from 1 of 12 configurations that was uniquely generated for each participant, where the location of the distractors and target (but not the orientation of the target) was fixed. These trials were called 'Repeats'. For the remaining trials, the display was randomly generated for each trial, making them 'Novel'. The order of display type (repeat vs novel), configuration (1-12) and target orientation (left or right) was randomised for each block. After each block, the programme paused and participants pressed a key when they were ready to continue. **were targets and distractors white? and what were the randomisation constraints?**
+
+#### Serial Response Task (SRT)
+
+The SRT was adapted from [nissenAttentionalRequirementsLearning1987]. The task began with a []. Four square placeholders were presented across the horizontal meridian, subtending w$^\circ$ x h$^\circ$. A red circle [RGB: ] appeared in one of the 4 squares for 500 ms. This served as the target stimulus. Participants responded by pressing the finger of their **right or dominant** hand that spatially aligned to the placeholder within which the circle appeared, using the relevant 'j', 'k', 'l' or ';' keys. The next target stimulus would appear 500 ms after the correct response had been made. Participants completed 4 blocks of 100 trials. For blocks 1 and 4, the location of the target stimulus was randomly selected for each trial. **what kind of randomisation?** These blocks are referred to as 'Novel'. For blocks 2 and 3, a repeating sequence of 10 elements was used to determine the target location. The sequence was repeated 10 times. The repeating sequence was 4-2-3-1-3-2-4-2-3-1, with 1 being the leftmost placeholder, and 4 being the rightmost placeholder. These blocks are referred to as 'Repeats'. Of interest is the RT for Novel and Repeat blocks in the latter haldf of the experient (block 4 vs 3).
+
+#### Visual Statistical Learning (VSL)
 
 ### Simulation protocol
 
@@ -121,7 +143,7 @@ _FFX_: For the SRT data, mean RTs from repeat and novel sequences were compared 
 
 ```{r, ABsimresults, fig.width=7, fig.asp=1, fig.cap="AB simulation results. A) showing Cohen's {d} attained for each sample size for the FFX modelling for the main effect of lag, B) showing Cohen's $d$ attained from the RFX modelling of lag + subject intercept, C) showing the log p-values attained across simulations at each sample size N for the FFX model, the vertical dashed line shows log(p=.05). Note: all p-values to the left of this line would result in a rejection of the null hypothesis.  D) same as C, except for the RFX model."}
 
-load('../data/AB_sim_data.RData')
+load('data/AB_sim_data.RData')
  
 # first tidy up the FFX and RFX data for plotting
 sims.dat <- sims.dat %>% filter(fx != "stim") 
@@ -155,7 +177,7 @@ rm(list=c("p", "p.dat", "rfx", "sims.dat"))
 
 ```{r, SDsimresults, warning=F, echo=F, fig.width=7, fig.asp=1, fig.cap="Dual-task simulation results. A) showing Cohen's {d} attained for each sample size for the FFX modelling for the main effect of task (single vs dual), B) showing Cohen's $d$ attained from the RFX modelling with an additional subject intercept, C) showing the log p-values attained across simulations at each sample size N for the FFX model, the vertical dashed line shows log(p=.05). D) same as C, except for the RFX model."}
 
-load('../data/SD_sim_data.RData')
+load('data/SD_sim_data.RData')
 ylims = c(0,3)
 ffx.d.p <- plt.fx.sz(sims.dat[sims.dat$model == "FFX", ], c(0,2))
 rfx.d.p <- plt.fx.sz(sims.dat[sims.dat$model == "RFX", ], c(1,3))
@@ -186,7 +208,7 @@ rm(list=c("p", "p.dat", "rfx", "sims.dat"))
 
 ```{r, CCsimresults, warning=F, echo=F, fig.width=7, fig.asp=1, fig.cap="Contextual-cueing simulation results. A) showing Cohen's {d} attained for each sample size for the FFX modelling for the interaction of block x condition (repeat vs novel), B) showing Cohen's $d$ attained from the RFX modelling with an additional subject intercept, C) showing the log p-values attained across simulations at each sample size N for the FFX model, the vertical dashed line shows log(p=.05). D) same as C, except for the RFX model."}
 
-load('../data/CC_sim_data.RData')
+load('data/CC_sim_data.RData')
 ylims = c(0,0.5)
 ffx.d.p <- plt.fx.sz(sims.dat[sims.dat$model == "FFX", ], ylims)
 rfx.d.p <- plt.fx.sz(sims.dat[sims.dat$model == "RFX", ], ylims)
@@ -234,7 +256,7 @@ rm(list=c("p", "p.dat", "rfx", "sims.dat"))
 
 ```{r, SRTsimresults, warning=F, echo=F, fig.width=7, fig.asp=1, fig.cap="Serial Response Task simulation results. A) showing Cohen's {d} attained for each sample size for the FFX modelling, using a within-subjects t-test to compare condition (repeat vs novel), B) showing Cohen's $d$ attained from the RFX modelling with an additional subject intercept, C) showing the log p-values attained across simulations at each sample size N for the FFX model, the vertical dashed line shows log(p=.05). D) same as C, except for the RFX model."}
 
-load('../data/SRT_sim_data.RData')
+load('data/SRT_sim_data.RData')
 ylims = c(0,0.5)
 ffx.d.p <- plt.fx.sz(sims.dat[sims.dat$model == "FFX", ], ylims)
 rfx.d.p <- plt.fx.sz(sims.dat[sims.dat$model == "RFX", ], ylims)
@@ -262,74 +284,3 @@ rm(list=c("p", "p.dat", "rfx", "sims.dat"))
 
 
 ### Visual Statistical Learning
-
-
-#### Tables
-
-Insert tables by `kable` in knitr package in R. Then cross-reference it back with: see Table \@ref(tab:tableName).
-
-
-```{r tableName,results='asis',echo=FALSE, message=F, warning=F}
-source("R/rcode.R")
-knitr::kable(sprich, booktabs = T, caption = "Caption here.")
-```
-
-Put results inline, e.g. the mean species richness is `r meansprich`.
-
-#### Insert tables by `xtable` package in R
-
-
-Show as Table. \ref{t:anova}:
-
-```{r echo=F,results='asis',warning=F,message=F}
-library(xtable)
-envi.summ = xtable(summary(envi.aov),label = "t:anova", caption = "Caption here")
-print(envi.summ,
-		caption.placement = "top",
-	  floating=T,
-	  hline.after=NULL,
-	  comment = FALSE,
-	  add.to.row=list(pos=list(-1,0, nrow(envi.summ)),
-	  command=c(
-		   '\\toprule\n',
-		  '\\midrule\n',
-		   '\\bottomrule\n')))
-```
-
-#### Insert tables by hand
-
-
-Show as Table. \@ref(tab:byhand):
-
-Table: (#tab:byhand) Caption here.
-
-Col A             Col B       Col C                   Col D
-------------      -------     ------------------      ------------------
-row 1             190         $112 \pm 2$             $233 \pm 3$
-$\eta$            0.13        0.12                    0.12
-$\eta^2$          0.14        0.13                    0.50
-$\eta^3$          0.15        0.31                    0.52
-
-
-#### Figures
-
-Insert figure by code chunk. And cross-ref it back as Figure \@ref(fig:figName).
-
-```{r figName, fig.width=7, fig.asp=1, fig.cap="Your caption here."}
-ggplot(data = envi.sprich, aes(x = value, y = sprich)) +
-  geom_point() + geom_smooth(method = "lm") +
-  facet_wrap(~envi, scales = "free_x") + theme_bw()
-```
-
-
-Or if you already have the figure: 
-And cite it as Figure \@ref(fig:fig2).
-
-```{r fig2, out.width='70%', fig.cap="Caption here."}
-knitr::include_graphics(path = paste0(normalizePath(getwd()), "/Figs/plot.pdf"))
-```
-
-
-More details can be found at [here](https://bookdown.org/yihui/bookdown/).
-
-# References
