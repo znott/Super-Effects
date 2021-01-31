@@ -27,7 +27,7 @@ set.seed(42) # testing diff seeds on output
 # load data and wrangle into tidy form (see https://r4ds.had.co.nz/tidy-data.html), plus relabel to make
 # labels a little simpler
 # ----------------------------------------------------------------------------------------------------
-dat = read.csv("../total_of_313_subs_VSL_task_trial_level_data.csv", header=TRUE)
+dat = read.csv("../data/total_of_313_subs_VSL_task_trial_level_data.csv", header=TRUE)
 
 # ----------------------------------------------------------------------------------------------------
 # Create dataframe for t-test analysis
@@ -40,6 +40,7 @@ acc.dat <- dat %>% group_by(Subj.No) %>%
 # Create dataframe for permutations/prevalence analysis
 # ----------------------------------------------------------------------------------------------------
 
+# data frame contains TRUE ordering
 prev.dat <- dat %>% select(Subj.No, Trial.No, Response, Target.Order, Accuracy) 
 prev.dat$Response <- as.factor(prev.dat$Response)
 prev.dat$Target.Order <- as.factor(prev.dat$Target.Order)
@@ -92,9 +93,9 @@ sims.dat$measure <- as.factor(sims.dat$measure)
 # ----------------------------------------------------------------------------------------------------
 
 # first get the data from the first level perms
-n.perms =500# for each sample size, we will repeat our experiment n.perms times - setting to 500 because of the
+n.perms =1# for each sample size, we will repeat our experiment n.perms times - setting to 500 because of the
 # second level perms generated in each iteration
-flvl.perms <- run.mont.frst.lvl.over.subs(prev.dat, k) #P1 in 10.1016/j.neuroimage.2016.07.040 
+flvl.perms <- run.mont.frst.lvl.over.subs(prev.dat, k) #P1 in 10.1016/j.neuroimage.2016.07.040 (label shuffle)
 # now, over 100 experiments at each sample size, select the data, and then run the min stat procedure
 prev.res <- replicate(n.perms, lapply(sub.Ns, function(x) run.prev.test(data=flvl.perms, 
                                                                             subs=subs,
