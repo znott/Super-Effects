@@ -57,7 +57,7 @@ prev.dat <- prev.dat %>% mutate(Response = recode(Response,
 # ----------------------------------------------------------------------------------------------------
 
 sub.Ns = round(exp(seq(log(13), log(313), length.out = 20)))
-n.perms =1000# for each sample size, we will repeat our experiment n.perms times
+n.perms =1# for each sample size, we will repeat our experiment n.perms times
 k = 1000 #for Monte Carlo simulations for prevalence stats (applies to both first level and second level perms)
 
 # ----------------------------------------------------------------------------------------------------
@@ -93,8 +93,6 @@ sims.dat$measure <- as.factor(sims.dat$measure)
 # ----------------------------------------------------------------------------------------------------
 
 # first get the data from the first level perms
-n.perms =1# for each sample size, we will repeat our experiment n.perms times - setting to 500 because of the
-# second level perms generated in each iteration
 flvl.perms <- run.mont.frst.lvl.over.subs(prev.dat, k) #P1 in 10.1016/j.neuroimage.2016.07.040 (label shuffle)
 # now, over 100 experiments at each sample size, select the data, and then run the min stat procedure
 prev.res <- replicate(n.perms, lapply(sub.Ns, function(x) run.prev.test(data=flvl.perms, 

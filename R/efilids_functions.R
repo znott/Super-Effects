@@ -8,6 +8,8 @@
 # ----------------------------------------------------------------------------------------------------
 # select a data subset
 # ----------------------------------------------------------------------------------------------------
+
+
 get.data <- function(data, subs, N){
   # given a dataframe, the list of subject numbers, & N (the number of subs required),
   # return a dataframe with that number of subs returned by replacement
