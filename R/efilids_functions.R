@@ -20,7 +20,7 @@ sample.N <- function(subs, N, k, replace){
 ###### t-test functions (paired samples)
 ###### ----------------------------------------------------------------------------
 
-get.ps.t.test <- function(data, iv, dv, x, y){
+get.ps.t.test <- function(data, iv, dv, x){
   # run t.test on the dv between the variables x & y 
   # return the p value
   # data = dataframe for testing
@@ -34,7 +34,7 @@ get.ps.t.test <- function(data, iv, dv, x, y){
   t$p.value
 }
 
-get.cohens.d <- function(data, iv, dv, x, y){
+get.cohens.d <- function(data, iv, dv, x){
   # get Cohen's d measure for paired samples
   # data = dataframe for testing
   # iv = name of iv
@@ -48,12 +48,10 @@ get.cohens.d <- function(data, iv, dv, x, y){
   d
 }
 
-run.t.test.sim <- function(data, iv, dv, x, y, subs, N){
+run.t.test.sim <- function(data, iv="Block.No.Names", dv="RT", x="Random Block", subs){
   
-  data = get.data(data, subs, N)
-  out = data.frame( n    = N,
-                    p    = get.ps.t.test(data, iv, dv, x, y),
-                    d    = get.cohens.d(data, iv, dv, x, y))
+  out = data.frame( p    = get.ps.t.test(data, iv, dv, x),
+                    d    = get.cohens.d(data, iv, dv, x))
   out
 }
 
@@ -61,42 +59,38 @@ run.t.test.sim <- function(data, iv, dv, x, y, subs, N){
 ###### t-test functions (one sample t test, used for VSL)
 ###### -----------------------------------------------------------------------------------------------
 
-get.os.t.test <- function(data, dv){
+get.os.t.test <- function(sum.data, dv){
   # run one sample t.test 
   # return the p value
   # data = dataframe for testing
   # iv = name of iv
   # dv = name of dv
   # x = iv
-  t.dat = data[eval(dv)]
+  t.dat = sum.data[eval(dv)]
 #  t.idx = data[eval(iv)] == x
 #  t = t.test(t.dat[t.idx == TRUE], alt = "greater", mu = 0.5)
   t = t.test(t.dat, alt = "greater", mu = 0.5)
   t$p.value
 }
 
-get.os.cohens.d <- function(data, dv){
+get.os.cohens.d <- function(sum.data, dv){
   # get Cohen's d measure for one sample t test
-  # data = dataframe for testing
-  # iv = name of iv
-  # dv = name of dv
-  # x = iv
-  d.dat = data[eval(dv)]
-  #d.idx = data[eval(iv)] == x
+  # sum.data = dataframe for testing
+  # dv = dv of interest
+
+  d.dat = sum.data[eval(dv)]
   meanH0 = 0.5
-  # sd = sd( d.dat[d.idx == TRUE])
   sd = sd( d.dat$acc )
-  # d = (mean(d.dat[d.idx == TRUE]) - meanH0) / sd
   d = (mean(d.dat$acc) - meanH0) / sd
   d
 }
 
-run.os.t.test.sim <- function(data, dv, subs, N, perm){
+run.os.t.test.sim <- function(data, dv = "acc"){
   
-  data = get.data(data, subs, N)
-  out = data.frame( n    = N,
-                    p    = get.os.t.test(data, dv),
-                    d    = get.os.cohens.d(data, dv))
+  sum.data = data %>% group_by(sub) %>%
+                      summarise(acc=mean(Response==Target.Order))
+  out = data.frame( p    = get.os.t.test(sum.data, dv),
+                    d    = get.os.cohens.d(sum.data, dv))
   out
 }
 
@@ -104,56 +98,50 @@ run.os.t.test.sim <- function(data, dv, subs, N, perm){
 ###### prevalence statistics functions
 ###### -----------------------------------------------------------------------------------------------
 
-run.mont.frst.lvl <- function(data, N){
-  # data = 1 participants VSL data! N = number of montecarlo simulations
-  # https://arxiv.org/pdf/1512.00810.pdf
-  # see Algorithm section
-  # As 24! is in the millions, going to do a monte carlo sampling for the first level permutation
-  sub.data <- data.frame(sub=rep(data$Subj.No[1], times=N),
-                         acc=NA)
-  sub.data$acc[1] = with(data, mean(Target.Order==Response))
-  sub.data$acc[2:N]=replicate(N-1, with(data, mean(sample(Target.Order)==Response)))
-  sub.data
+# run.mont.frst.lvl <- function(data, N){
+#   # data = 1 participants VSL data! N = number of montecarlo simulations
+#   # https://arxiv.org/pdf/1512.00810.pdf
+#   # see Algorithm section
+#   # As 24! is in the millions, going to do a monte carlo sampling for the first level permutation
+#   sub.data <- data.frame(sub=rep(data$sub[1], times=N),
+#                          acc=NA)
+#   sub.data$acc[1] = with(data, mean(Target.Order==Response))
+#   sub.data$acc[2:N]=replicate(N-1, with(data, mean(sample(Target.Order)==Response)))
+#   sub.data
+# }
+
+run.sing.mont.frst.lvl <- function(data){
+  data %>% group_by(sub) %>%
+    summarise(acc = mean(sample(Target.Order) == Response))
 }
 
-run.mont.frst.lvl.over.subs <- function(data,N){
+run.mont.frst.lvl.over.subs <- function(data,NfL){
   # feed in all VSL data and the number of monte carlo perms to run (N)
   # will apply the run.mont.frst.lvl over each subject and return a dataframe
   # note: the first permutation is the preserved orderings, as they occurred in the experiment
-  subs <- unique(data$Subj.No)
-  perms <- lapply(subs, function(x) run.mont.frst.lvl(data=data[data$Subj.No==x,],N=N))
-  perms <- do.call(rbind, perms)
-  perms$p <- seq(1,N, by=1)
-  perms
-}
-
-get.4.scnd.lvl <- function(data, k, N, sub){
-  # this function extracts data from one participant and 1st level permutation (N)
-  data=data[data$sub == sub & data$p == sample(c(2:N),1),]
-  data$k=k
-  data
-}
-
-run.scnd.lvl.mc <- function(data, k, N){
-  # this will generate a set of second level permutations across all subjects
-  # as defined by https://github.com/allefeld/prevalence-permutation/blob/master/prevalenceCore.m (largely lines 136-157)
-  # procedure goes as:
-  # 1. for neutral perm, select actual subject data
-  # 2. for second level perms, then randomly select a permutation from each subject
-  # 3. store the results
+  nsubs = data$Nsz[1]
+  idx <- gen.flvl.perms(NfL, nsubs, max(data$Trial.No))
+  names(data)[names(data) == "Trial.No"] = "trial"
   
-  # data = the output data from run.mont.frst.lvl.over.subs
-  # k = the number of second level permutations
-  # N = the number of 1st level permutations
-  nsubs = length(unique(data$sub))
-  # for each permutation I take a random selection of non-neutral results (2:N), and select
-  # the data to make a dataframe
-  tmp=do.call(rbind, do.call(rbind, lapply(unique(data$sub), function(x) lapply(c(2:k), get.4.scnd.lvl, data=data, N=N, sub=x))))
-  # then I take the neutral data (original permutation and bind it to the permuted second level data)
-  neut.dat <- data[data$p == 1, ]
-  neut.dat$k <- 1
-  out.data <- rbind(neut.dat, tmp)
-  out.data
+  perms <- rbind(data %>% group_by(sub) %>%
+                          summarise(acc=mean(Response==Target.Order)) %>%
+                          mutate(p=1),
+                 inner_join(idx, data, by=c("sub", "trial")) %>% group_by(sub, p) %>%
+                          summarise(acc=mean(Response==Target.Order)))
+  perms %>% arrange(sub)
+}
+
+gen.flvl.perms <- function(NfL, nsubs, ntrials, neut=FALSE){
+  if (neut == FALSE){
+    idx <- data.frame(trial = unlist(replicate(nsubs*(NfL-1), sample(ntrials, replace=FALSE), simplify=FALSE)),
+                      p = rep(2:NfL, each=ntrials*nsubs),
+                      sub = rep(1:nsubs, each=ntrials, times=NfL-1))
+  } else {
+    idx <- data.frame(trial = rep(c(1:ntrials), times=nsubs*(NfL-1)),
+                      p = rep(2:NfL, each=ntrials*nsubs),
+                      sub = rep(1:nsubs, each=ntrials, times=NfL-1))
+  }
+  idx
 }
 
 gen.samps <- function(k, nsubs){
@@ -163,29 +151,55 @@ gen.samps <- function(k, nsubs){
   data
 }
 
-prev.test <- function(samp.data, nsubs, alpha, k, NfL){
-  # samp.data = takes the form of the first level perms generated by run.mont.frst.lvl.over.subs()
+get.perm.mins <- function(slvl.idx, flvl.idx, flvl.neut, samp.data){   
+  inner_join(slvl.idx, cbind(inner_join(flvl.idx, samp.data, by=c("sub","trial")) %>% select(-Response), inner_join(flvl.neut, samp.data, by=c("sub", "trial")) %>% select(Response)), by=c("sub", "p")) %>%
+    group_by(shuffle, sub) %>%
+    summarise(acc=mean(Target.Order == Response)) %>%
+    group_by(shuffle) %>%
+    summarise(min.acc=min(acc)) %>%
+    select(min.acc)
+}
+
+get.flvl.perms <- function(data, NfL){
+  nsubs = max(data$sub)
+  data.frame(acc=unlist(lapply(unique(data$sub), 
+                               function(x, y=NfL-1) replicate(y, with(data[data$sub == x, ], mean(sample(Target.Order, replace=FALSE) == Response))))),
+             sub=rep(1:nsubs, each=NfL-1),
+             p = rep(2:NfL, times=nsubs))
+}
+
+prev.test <- function(samp.data, alpha, k, NfL){
+  # samp.data = sample of data
   # k = the number of 2nd level perms
   # NfL = the number of first level perms
-  samp.data$Subjects <- rep(1:nsubs, each=NfL) # give each a unique subject identifier
-  names(samp.data)[names(samp.data) == "Subjects"] = "sub"
+  # alpha = criteria for significance
   
+  # first, run first level permutations on input dataset
+  # assign a unique subject number to each data entry and
+  # get the data from the first level perms
+  nsubs <- length(samp.data$Trial.No)/max(samp.data$Trial.No)
+  samp.data$sub <- rep(1:nsubs, each=max(samp.data$Trial.No))
+  names(samp.data)[names(samp.data) == "Trial.No"] = "trial"
+#  flvl.perms <- run.mont.frst.lvl.over.subs(samp.data, NfL) #P1 in 10.1016/j.neuroimage.2016.07.040 (label shuffle)
+  # compute flvl idx
+  ntrials = max(samp.data$trial)
+  flvl.perms <- get.flvl.perms(samp.data, NfL)
+  # Now generate a neutral idx as long and as appropriate as flvl.idx, for a subsequent cbind, prior to 
+  # summarising and joining to slvl idx, summarising and then taking minimum stat.
   # Now the data is prepared generate indexing for minimum stat
-  idx = rbind(gen.samps(k, nsubs)) %>% arrange(shuffle, sub)
-  
-#  data <- run.scnd.lvl.mc(data, k, Nfl)
-  
+  slvl.idx = rbind(gen.samps(k, nsubs)) %>% arrange(shuffle, sub)
   # computes prevalence statistic, given a set of second level permutations (and original scores)
   # Based on: https://github.com/allefeld/prevalence-permutation/blob/master/prevalenceCore.m - lines 160-168, also
   # k = the number second level permutation you want to extract from the data
   # first select the minimum statistic from the neutral permutation
-  neut_m <- min(samp.data$acc[samp.data$p == 1])
+  # sort out this one 
+  neut_m <- min(unlist(lapply(unique(samp.data$sub), function(x) with(samp.data[samp.data$sub == x, ], mean(Response==Target.Order)))))
   # now compute the probability of the minimum value (equation 24 of 10.1016/j.neuroimage.2016.07.040)
  # perm_mins <- t(do.call(rbind, lapply(c(1:max(data$k)), function(x) min(data$acc[data$k == x]))))
   # THE BELOW ONLY WORKS BECAUSE THE DATA ARE IN PROPORTION CORRECT. WOULD NOT WORK FOR PERCENTAGES!
-  perm_mins <- sapply(unique(idx$shuffle), function(x) min(samp.data %>% right_join(idx[idx$shuffle == x,]))) 
+  puGN <- sum(unlist(lapply(unique(slvl.idx$shuffle), function(x) min(inner_join(slvl.idx[slvl.idx$shuffle==x, ], flvl.perms, by=c("sub", "p"))))) >= neut_m)/NfL
   # probability uncorrected of global null (puGN)
-  puGN <- sum(perm_mins >= neut_m)/max(samp.data$p) # this is the uncorrected p value for the global null hypothesis that a == a0
+  #puGN <- sum(perm.mins$min.acc >= neut_m)/NfL # this is the uncorrected p value for the global null hypothesis that a == a0
   # the above gives the statement of existance, next step is to evaluate against the prevalence null
   # if this is below alpha, then we would say its significant
 
@@ -206,37 +220,33 @@ prev.test <- function(samp.data, nsubs, alpha, k, NfL){
   #   gamma_zero <- max(null_gammas[sigMN])
   # }
   
-  results <- data.frame(gamma=gamma_zero,
+  results <- data.frame(d=gamma_zero,
                         p = puGN)
   results
 }
 
-run.prev.test <- function(data, N, subs, alpha, k, Np){
-  # data = the data output by run.mont.frst.lvl.over.subs
+run.prev.test <- function(data, alpha=.05, k=1000, Np=1000){
+  # data = the input data for that N and sample
   # N = the desired sample size
   # subs = the list of subjects
   # alpha = the alpha level against which to assess significance
   # k = the number of 2nd level perms
   # Np = the number of 1st level perms
-  tmp <- get.data(data, subs, N) #flvl perms dat -- this will need to be amended to idx, to incorporate new sampling method #K. Garner, 31/01/2021
-  results <- prev.test(tmp, N, alpha, k, Np)
-  results$n <- N
+  results <- prev.test(data, alpha, k, Np)
   results
 }
 
 # ----------------------------------------------------------------------------------------------------
 ###### LME and sim functions for SRT data
 #### -------------------------------------------------------------------------------------------------
-
-# NOTE: the ffx aov model for CC (defined below) also works for SRT
-run.lme.4.srt <- function(data, dv){
+run.lme.4.srt <- function(data, dv = "RT"){
   # run a linear mixed effects analysis
   # going to take the interaction of block x sequence/random as the effect from 
   # which to calculate the recommended d value, 
   # for comparison with the ffx analysis: see https://www.journalofcognition.org/articles/10.5334/joc.10/
   # and https://psycnet-apa-org.ezproxy.library.uq.edu.au/fulltext/2014-32656-001.html
   
-  names(data) <- c("sub", "trialtype", "RT")  
+  names(data) <- c("sub", "Nsz", "perm", "trialtype", "RT")  
   
   # FOR THE SRT TASK, ALSO FOUND THAT A BOUNDARY (SINGULAR) FIT WHEN INCLUDING RFX OF EXPERIMENTOR AND TASK ORDER
   mod <- lmer(eval(parse(text=dv)) ~ trialtype + (1|sub),
@@ -256,36 +266,11 @@ run.lme.4.srt <- function(data, dv){
   out
 }
 
-run.SRT.sim <- function(data, subs, N, dv, fx, perm){
-  # this function runs the sims for contextual cueing
-  # data = conforms to the requirements for get.ps.aov.CC or run.lme.4.cc
-
-  if (fx == "ffx"){
-    tmp = run.t.test.sim(data, "Block.No.Names", dv, "Random Block", "Sequence Block", subs, N)
-    tmp$esub = NA
-#    tmp$etask = NA
-#    tmp$eexp = NA
-    tmp$eRes = NA
-  } else if (fx == "rfx"){
-    data = get.data(data, subs, N)
-    tmp = run.lme.4.srt(data, dv)
-  }
-  out = data.frame( n    = N,
-                    p    = tmp$p,
-                    d    = tmp$d,
-                    esub = tmp$esub,
-#                    etask = tmp$etask,
-#                    eexp = tmp$eexp,
-                    eRes = tmp$eRes)
-  out
-}
-
-
 # ----------------------------------------------------------------------------------------------------
 ###### aov and LME functions for CC data
 #### -------------------------------------------------------------------------------------------------
 
-get.ps.aov.CC.SRT <- function(data, dv){
+get.ps.CC <- function(data, dv = "RT"){
   # run aov on the contextual cueing data
   # return the p value, and the conversion of peta to d
   # data = dataframe for testing
@@ -293,10 +278,10 @@ get.ps.aov.CC.SRT <- function(data, dv){
   
   # NOTE: This also works for SRT data
   
-  names(data) <- c("sub", "block", "trialtype", "RT")
+  names(data) <- c("sub", "Nsz", "perm", "block", "trialtype", "RT")
   #an <- aov(eval(parse(text=dv)) ~ (block*trialtype)+Error(sub/(block*trialtype)), data = data) # not worried about using type 1 sum of squares because the data are balanced, see https://mcfromnz.wordpress.com/2011/03/02/anova-type-iiiiii-ss-explained/
   # comparisons between ours and ss3 outputs revealed the above comment to not be true, therefore using Anova from car package
-  an <- Anova(lm(RT ~ block * trialtype, data=data, contrasts=list(topic=contr.sum, sys=contr.sum)), type=3)
+  an <- Anova(lm(RT ~ block * trialtype, data=data), type=3)
   p <- an$`Pr(>F)`[which(rownames(an) == "block:trialtype")]
   out = list()
   out$p <- p
@@ -311,7 +296,7 @@ get.ps.aov.CC.SRT <- function(data, dv){
 }
 
 
-run.lme.4.cc <- function(data, dv, fx){
+run.lme.4.cc <- function(data, dv = "RT", fx="int"){
   # run a linear mixed effects analysis
   # going to take the interaction of block x repeat/novel as the effect from 
   # which to calculate the recommended d value, 
@@ -319,7 +304,7 @@ run.lme.4.cc <- function(data, dv, fx){
   # and https://psycnet-apa-org.ezproxy.library.uq.edu.au/fulltext/2014-32656-001.html
   # fx = do you want to test for the interaction (int), or the main effect (me)?
   
-  names(data) <- c("sub", "task.order", "exp", "block", "trialtype", "RT")  
+  names(data) <- c("sub", "Nsz", "perm", "block", "trialtype", "RT")  
   
   if (fx == "int"){
     mod <- lmer(eval(parse(text=dv)) ~ block + trialtype + block:trialtype + (1|sub),
@@ -350,41 +335,10 @@ run.lme.4.cc <- function(data, dv, fx){
 }
 
 
-run.aov.CC.sim <- function(data, subs, N, dv, fx, efx){
-# this function runs the sims for contextual cueing
-# data = conforms to the requirements for get.ps.aov.CC or run.lme.4.cc
-# efx = the effect you want to test for in the CC data 'me' or 'int' 
-  data = get.data(data, subs, N)
-  if (fx == "ffx"){
-
-        tmp = get.ps.aov.CC.SRT(data, dv)
-    tmp$esub = NA
-    # tmp$etask = NA
-    # tmp$eexp = NA
-    tmp$eRes = NA
-    tmp$fx = "blk:tt"
-    
-  } else if (fx == "rfx"){
-    
-    tmp = run.lme.4.cc(data, dv, efx)
-    tmp$fx = paste(efx)
-  }
-  out = data.frame( n    = N,
-                    p    = tmp$p,
-                    d    = tmp$d,
-                    esub = tmp$esub,
-                    # etask = tmp$etask,
-                    # eexp = tmp$eexp,
-                    eRes = tmp$eRes,
-                    fx = tmp$fx)
-  out
-}
-
-
 # ----------------------------------------------------------------------------------------------------
 ###### aov and LME functions for SD data
 #### -------------------------------------------------------------------------------------------------
-get.ps.aov.SD <- function(data, dv){
+get.ps.SD <- function(data, dv){
   # run aov on the contextual cueing data
   # return the p value, and the conversion of peta to d
   # data = dataframe for testing
@@ -392,9 +346,10 @@ get.ps.aov.SD <- function(data, dv){
   
   # NOTE: This also works for SRT data
   
-  names(data) <- c("sub", "task", "trialtype", "RT")
+  names(data) <- c("sub", "Nsz", "perm", "task", "trialtype", "RT")
   #an <- aov(eval(parse(text=dv)) ~ (task*trialtype)+Error(sub/(task*trialtype)), data = data) # not worried about using type 1 sum of squares because the data are balanced, see https://mcfromnz.wordpress.com/2011/03/02/anova-type-iiiiii-ss-explained/
-  an <- Anova(lm(RT ~ task * trialtype, data=data, contrasts=list(topic=contr.sum, sys=contr.sum)), type=3)
+  # happy with the defaults
+  an <- Anova(lm(RT ~ task * trialtype, data=data), type=3)
   p <- an$`Pr(>F)`[which(rownames(an) == "trialtype")]
   #p <- summary(an$`Within`)[[1]][["Pr(>F)"]][2] # we care about main effect of trial type
   out = list()
@@ -406,17 +361,11 @@ get.ps.aov.SD <- function(data, dv){
   out
 }
 
-run.lme.4.SD <- function(data, dv, efx){
+run.lme.4.SD <- function(data, dv = "RT", efx = "sub"){
   # run a linear mixed effects analysis
-  # going to take the difference between lag 2 and lag 7 as the effect from 
-  # which to calculate the recommended d value, 
   # for comparison with the ffx analysis: see https://www.journalofcognition.org/articles/10.5334/joc.10/
   # and https://psycnet-apa-org.ezproxy.library.uq.edu.au/fulltext/2014-32656-001.html
-  if (sum(names(data) == "task.stim")==0 ){
-    names(data) <- c("sub", "task", "trialtype", "RT")  
-  } else {
-    names(data) <- c("sub", "task", "trialtype", "stim", "RT")  
-  }
+  names(data) <- c("sub", "Nsz", "perm", "task", "trialtype", "RT")
   # NOTE: when I had the following RFX structure (1|sub) + (1|task.order) + (1|exp) the fit was singular, suggesting
   # the RFX structure is too complex for the data - https://stats.stackexchange.com/questions/378939/dealing-with-singular-fit-in-mixed-models
   # therefore am testing the removal of each element of the rfx structure, starting with task.order.
@@ -457,28 +406,6 @@ run.lme.4.SD <- function(data, dv, efx){
   #list(out, as.data.frame(VarCorr(mod)))
   out
 }
-
-run.SD.sim <- function(data, subs, N, dv, fx, efx){
-  # this function runs the sims for SD
-  # data = conforms to the requirements for get.ps.aov.SD or run.lme.4.SD
-  data = get.data(data, subs, N)
-  if (fx == "ffx"){
-    tmp = get.ps.aov.SD(data, dv)
-    tmp$esub = NA
-    tmp$eexp = NA
-    tmp$eRes = NA
-  } else if (fx == "rfx"){
-    tmp = run.lme.4.SD(data, dv, efx)
-  }
-  out = data.frame( n    = N,
-                    p    = tmp$p,
-                    d    = tmp$d,
-                    esub = tmp$esub,
-                    eRes = tmp$eRes,
-                    fx   = efx)
-  out
-}
-
 
 # ----------------------------------------------------------------------------------------------------
 ###### aov and LME functions for AB data
@@ -600,13 +527,19 @@ run.models <- function(in.data, subs, N, ffx.f, rfx.f){
   rfx.f <- eval(rfx.f)
   tmp.rfx = unlist(rfx.f(inner_join(idx, in.data, by="sub")))
 
-  out = data.frame( n    = c(N, N),
-                    p    = c(tmp.fx["p"], tmp.rfx["p"]),
-                    d    = c(tmp.fx["d"], tmp.rfx["d"]),
-                    esub = c(NA, tmp.rfx["esub"]),
-                    eRes = c(NA, tmp.rfx["eRes"]),
-                    mod = c("ffx", "rfx") )
-
+  if (length(names(tmp.rfx)) > 2) {
+    out = data.frame( n    = c(N, N),
+                      p    = c(tmp.fx["p"], tmp.rfx["p"]),
+                      d    = c(tmp.fx["d"], tmp.rfx["d"]),
+                      esub = c(NA, tmp.rfx["esub"]),
+                      eRes = c(NA, tmp.rfx["eRes"]),
+                      mod = c("ffx", "rfx") )
+  } else {
+    out = data.frame( n    = c(N, N),
+                      p    = c(tmp.fx["p"], tmp.rfx["p"]),
+                      d    = c(tmp.fx["d"], tmp.rfx["d"]),
+                      mod = c("ffx", "rfx") )    
+  }
   out
 }
 

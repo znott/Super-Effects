@@ -13,15 +13,15 @@ rm(list=ls())
 # install.packages("tidyverse")
 # install.packages("wesanderson")
 # install.packages("cowplot")
-library(tidyverse) # for data wrangling
 library(wesanderson) # palette for some sweet figure colours
 library(cowplot)
+library(lme4) # for mixed effects modelling
 library(ggridges)
+library(parallel)
+library(tidyverse) # for data wrangling
 source("efilids_functions.R") # custom functions written for this project
 source("R_rainclouds.R") # functions for plotting
 
-# load this guy if you have it already
-#load("VS_sim_data.RData")
 set.seed(42) # testing diff seeds on output
 # ----------------------------------------------------------------------------------------------------
 # load data and wrangle into tidy form (see https://r4ds.had.co.nz/tidy-data.html), plus relabel to make
@@ -30,14 +30,7 @@ set.seed(42) # testing diff seeds on output
 dat = read.csv("../data/total_of_313_subs_VSL_task_trial_level_data.csv", header=TRUE)
 
 # ----------------------------------------------------------------------------------------------------
-# Create dataframe for t-test analysis
-# ----------------------------------------------------------------------------------------------------
-
-acc.dat <- dat %>% group_by(Subj.No) %>%
-                   summarise(acc = mean(Accuracy))
-
-# ----------------------------------------------------------------------------------------------------
-# Create dataframe for permutations/prevalence analysis
+# Create dataframe for analysis
 # ----------------------------------------------------------------------------------------------------
 
 # data frame contains TRUE ordering
@@ -57,37 +50,22 @@ prev.dat <- prev.dat %>% mutate(Response = recode(Response,
 # ----------------------------------------------------------------------------------------------------
 
 sub.Ns = round(exp(seq(log(13), log(313), length.out = 20)))
-n.perms =1# for each sample size, we will repeat our experiment n.perms times
+sub.Ns = 13
+n.perms =1000# for each sample size, we will repeat our experiment n.perms times
 k = 1000 #for Monte Carlo simulations for prevalence stats (applies to both first level and second level perms)
-
-# ----------------------------------------------------------------------------------------------------
-# define variables for saving plots
-# ----------------------------------------------------------------------------------------------------
-
-plot.fname = "VSL.png"
-width = 10 # in inches
-height = 10
+Np = 1000
+cores = 30
 
 # ----------------------------------------------------------------------------------------------------
 # run simulations for t-test model, getting p values from t.tests, and cohen's d values, and save results to a list
 # ----------------------------------------------------------------------------------------------------
 
-subs = unique(acc.dat$Subj.No)
-sims = replicate(n.perms, lapply(sub.Ns, function(x) run.os.t.test.sim(data=acc.dat, 
-                                                                       dv="acc", 
-                                                                       subs=subs,
-                                                                       N=x)), simplify = FALSE)
-
-# ----------------------------------------------------------------------------------------------------
-# simplify the sims output to a dataframe and do a little wrangling to neaten it up
-# ----------------------------------------------------------------------------------------------------
-
-sims.dat = lapply(seq(1,n.perms,by=1), function(x) do.call(rbind, sims[[x]]))
-sims.dat = do.call(rbind, sims.dat)
-sims.dat$n <- as.factor(sims.dat$n)
-sims.dat = sims.dat %>% pivot_longer(c('p', 'd'), names_to = "measure", values_to="value")
-sims.dat$measure <- as.factor(sims.dat$measure)
-
+subs  <- unique(prev.dat$Subj.No)
+start  <-  Sys.time()
+# do I want to change the below to mclapply also?
+lapply(sub.Ns, function(x) run.outer(in.data=prev.dat, subs=subs, N=x, k=n.perms, j=1, cores=cores, ffx.f=run.os.t.test.sim, rfx.f=run.prev.test, fstem="VSL_N-%d_parent-%d.RData"))
+end <-  Sys.time()
+end - start
 # ----------------------------------------------------------------------------------------------------
 # minimum statistic approach
 # ----------------------------------------------------------------------------------------------------
@@ -100,7 +78,7 @@ prev.res <- replicate(n.perms, lapply(sub.Ns, function(x) run.prev.test(data=flv
                                                                             alpha=.05,
                                                                             N=x,
                                                                             k=k,
-                                                                            Np=k)), simplify = FALSE)
+                                                                            Np=Np)), simplify = FALSE)
 prev.res <- do.call(rbind, do.call(rbind, prev.res))
 # pivot longer and rename as p and d, and then add x-label to the plot below
 prev.out <- prev.res %>% 

@@ -53,22 +53,12 @@ ffx.dat <- dat %>% group_by(Subj.No, Trial.Type.Name) %>%
 # ----------------------------------------------------------------------------------------------------
 sub.Ns = round(exp(seq(log(13), log(313), length.out = 20)))
 n.perms =1000# for each sample size, we will repeat our experiment n.perms^2 times 
-cores = 4
-
-# ----------------------------------------------------------------------------------------------------
-# define variables for saving plots
-# ----------------------------------------------------------------------------------------------------
-
-plot.fname = "AB.png"
-rfx.plot.fname = "AB_rfx.png"
-width = 10 # in inches
-height = 10
+cores = 30
 
 # ----------------------------------------------------------------------------------------------------
 # run simulations for ffx & rfx models, getting p values and partial eta squares, and save results to a list
 # ----------------------------------------------------------------------------------------------------
 subs  <- unique(ffx.dat$Subj.No)
-# implement with fstem, and functions
 lapply(sub.Ns, function(x) run.outer(in.data=ffx.dat, subs=subs, N=x, k=n.perms, j=n.perms, cores=cores, ffx.f=get.ps.aov.AB, rfx.f=run.lme.4.AB, fstem="AB_N-%d_parent-%d.RData"))
 
 # ----------------------------------------------------------------------------------------------------
@@ -76,8 +66,8 @@ lapply(sub.Ns, function(x) run.outer(in.data=ffx.dat, subs=subs, N=x, k=n.perms,
 # ----------------------------------------------------------------------------------------------------
 dens.across.N(fstem="AB_N-%d_parent-%d.RData", Ns=sub.Ns, j=n.perms, min=-800, max=0, spacer=1000, dv="p", savekey="AB")
 dens.across.N(fstem="AB_N-%d_parent-%d.RData", Ns=sub.Ns, j=n.perms, min=0, max=3, spacer=1000, dv="d", savekey="AB")
-dens.across.N(fstem="AB_N-%d_parent-%d.RData", Ns=sub.Ns, j=n.perms, min=0, max=1, spacer=1000, dv="esub", savekey="AB")
-dens.across.N(fstem="AB_N-%d_parent-%d.RData", Ns=sub.Ns, j=n.perms, min=0, max=1, spacer=1000, dv="eRes", savekey="AB")
+dens.across.N(fstem="AB_N-%d_parent-%d.RData", Ns=sub.Ns, j=n.perms, min=0, max=0.75, spacer=1000, dv="esub", savekey="AB")
+dens.across.N(fstem="AB_N-%d_parent-%d.RData", Ns=sub.Ns, j=n.perms, min=0, max=0.75, spacer=1000, dv="eRes", savekey="AB")
 
 
 # ----------------------------------------------------------------------------------------------------
