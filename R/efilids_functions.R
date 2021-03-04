@@ -547,7 +547,7 @@ run.models <- function(in.data, subs, N, ffx.f, rfx.f){
 # Density generating functions for plotting, and for computing 95 % CI for the FFX/RFX ratio measure
 # ----------------------------------------------------------------------------------------------------
 
-dens.across.N <- function(fstem, Ns, j, min, max, spacer, dv, savekey){
+dens.across.N <- function(fstem, Ns, j, min, max, spacer, dv, savekey, datpath, rxvnme){
   # grab density functions for dv of choice, across all N sizes
   # save to a binary file output
   # INPUTS
@@ -559,14 +559,18 @@ dens.across.N <- function(fstem, Ns, j, min, max, spacer, dv, savekey){
   # -- spacer: see get.dens
   # -- dv: which dv are we pulling data out for?
   # -- savekey: usually the initials of the paradigm, for saving output
-  tmp = lapply(Ns, add.dens, fstem=fstem, j=j, min=min, max=max, dv=dv, spacer=spacer)
+  # -- datpath: filepath to data rxv
+  # -- rxvnme: name of rxv
+  tmp = lapply(Ns, add.dens, fstem=fstem, j=j, min=min, max=max, 
+               dv=dv, spacer=spacer, datpath=datpath, rxvnme=rxvnme,
+               task=savekey)
   d = do.call(rbind, tmp)
   fname = paste(savekey, dv, "d.RData", sep="_")
-  save(d, file=fname)
+  save(d, file=paste(datpath, fname, sep=""))
 }
 
 
-add.dens <- function(fstem, N, j, min, max, spacer, dv){
+add.dens <- function(fstem, N, j, min, max, spacer, dv, datpath, rxvnme, task){
   # add density functions for the ffx or rfx based values
   # for a given N, across all outer loops. 
   # output is two density functions.
@@ -578,14 +582,18 @@ add.dens <- function(fstem, N, j, min, max, spacer, dv){
   # -- max: see get.dens
   # -- spacer: see get.dens
   # -- dv: which dv do you want to know about?
-
-  ds <- lapply(1:j, get.dens, fstem=fstem, N=N, min=min, max=max, dv=dv, spacer=spacer)
+  
+  # first get data extracted for that N
+  unzp(datpath, rxvnme, task, j, N)
+  ds <- lapply(1:j, get.dens, fstem=paste(datpath, "/", "Rdat/", task, fstem, sep=""), N=N, min=min, max=max, dv=dv, spacer=spacer)
   ds <- lapply(1:j, function(x) do.call(rbind, ds[[x]])) 
   ds <- Reduce('+', ds)
   out <- data.frame(Nsz = rep(N, each=ncol(ds)*2),
                     mod = rep(c("ffx", "rfx"), each=ncol(ds)),
                     d = c(ds["ffx",], ds["rfx",]),
                     x = seq(min, max, by=abs(max-min)/spacer))
+  # remove data files
+  unlink(paste(datpath, "/Rdat", sep=""), recursive=TRUE)
   out
 }
 
@@ -641,6 +649,45 @@ gen.dens <- function(min, max, spacer = 10000, data){
 # Plotting
 # ----------------------------------------------------------------------------------------------------
 
+plot.d <- function(d, m, yl, sc){
+  # this function is for the mega sample
+  # inputs:
+  #--d: data
+  #--m: model - ffx or rfx
+  #--yl: ylim - c(0,3) - for example
+  #--sc: how much to scale
+  total_p <- d %>% group_by(mod, Nsz) %>% summarise(sum=sum(d)) 
+  d %>% inner_join(total_p, by=c("mod", "Nsz")) %>% mutate(dp = d) %>% 
+    filter(mod == eval(m)) %>% 
+    ggplot(aes(x=x, y=Nsz, height=dp, group=Nsz)) +
+    geom_density_ridges(stat="identity", scale=sc, rel_min_height=.01, fill=wes_palette("IsleofDogs1")[1], color=wes_palette("IsleofDogs1")[5]) +
+    theme_ridges() +
+    xlab('d') + ylab('N') + theme_cowplot() + xlim(yl) +
+    guides(fill = FALSE, colour = FALSE) +
+    ggtitle(eval(m)) +
+    theme(axis.title.x = element_text(face = "italic"))
+}
+
+plot.p <- function(d, m, yl, sc){
+  # inputs:
+  #--d: data
+  #--m: model - ffx or rfx
+  #--yl: ylim - c(0,3) - for example
+  #--sc: how much to scale
+  total_p <- d %>% group_by(mod, Nsz) %>% summarise(sum=sum(d)) 
+  d %>% inner_join(total_p, by=c("mod", "Nsz")) %>% mutate(dp = d) %>% 
+    filter(mod == eval(m)) %>% 
+    ggplot(aes(x=x, y=Nsz, height=dp, group=Nsz)) +
+    geom_density_ridges(stat="identity", scale=sc, rel_min_height=.01, fill=wes_palette("IsleofDogs1")[1], color=wes_palette("IsleofDogs1")[5]) +
+    theme_ridges() +
+    xlab('p') + ylab('N') + theme_cowplot() + xlim(yl) +
+    guides(fill = FALSE, colour = FALSE) +
+    ggtitle(eval(m)) +
+    theme(axis.title.x = element_text(face = "italic")) +
+    geom_vline(aes(xintercept=log(.05)), linetype="dashed", colour="black")
+}
+
+
 plt.fx.sz <- function(data, ylims){
   # plot effect size, given dataframe of 'n', 'measure', and 'value'
   data %>% filter(measure=="d") %>%
@@ -690,3 +737,32 @@ plt.rfx <- function(data, xlims){
     guides(fill = FALSE, colour = FALSE) +
     theme(axis.title.x = element_text(face = "italic"))
 }
+
+# ----------------------------------------------------------------------------------------------------
+# More data wrangles
+# ----------------------------------------------------------------------------------------------------
+unzp <- function(datpath, rxnme, task, j, subN){
+  # function to unzip specific files from the data archive
+  # :: datpath = where is the data?
+  # :: rxnme = name of zipped (rxiv) file
+  # :: task = which task do you want to extract data for?
+  # :: j = total number of permutations/parent sets
+  # :: subs = the sub Ns used in the perms
+  lapply(1:j, function(y) unzip(paste(datpath, rxnme, sep=""), 
+                                      file=paste("Rdat/", task, sprintf("_N-%d_parent-%d.RData", subN, y ), sep=""),
+                                      exdir=datpath))
+  
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
