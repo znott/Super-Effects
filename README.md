@@ -1,4 +1,4 @@
-# Super-Effects
+# Super-Effects test
 
 Lead: Kelly Garner; Co-authors: Abbey Nydam, Zoie Nott; PI: Paul Dux <p>
 Working Title: The contribution of sample size to the reproducability of individual differences methods in cognitive psychology 
